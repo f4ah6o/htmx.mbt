@@ -1,0 +1,89 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "horideicom/htmx/src/htmx"
+
+import(
+  "mizchi/js/browser/dom"
+  "mizchi/js/browser/observer"
+)
+
+// Values
+pub fn create_htmx_observer() -> @observer.MutationObserver
+
+pub fn find_htmx_element(@dom.Element) -> @dom.Element?
+
+pub fn find_method_url(@dom.Element) -> (HttpMethod, String)?
+
+pub fn get_swap_style(@dom.Element) -> SwapStyle
+
+pub fn get_target(@dom.Element) -> @dom.Element
+
+pub fn get_trigger_event(@dom.Element) -> String
+
+pub fn htmx_init() -> Unit
+
+pub fn init_with_observer() -> @observer.MutationObserver
+
+pub fn parse_trigger(String) -> TriggerDef
+
+pub fn parse_triggers(String) -> Array[TriggerDef]
+
+pub async fn request(String, HttpMethod) -> String
+
+pub async fn request_safe(String, HttpMethod) -> String? noraise
+
+pub fn start_htmx_observer(@observer.MutationObserver) -> Unit
+
+pub fn swap(@dom.Element, String, SwapStyle) -> Unit
+
+// Errors
+
+// Types and methods
+pub enum HttpMethod {
+  Get
+  Post
+  Put
+  Delete
+  Patch
+}
+pub fn HttpMethod::from_attr(String) -> Self?
+pub fn HttpMethod::to_string(Self) -> String
+
+pub enum SwapStyle {
+  InnerHTML
+  OuterHTML
+  BeforeBegin
+  AfterBegin
+  BeforeEnd
+  AfterEnd
+  Delete
+  None
+}
+pub fn SwapStyle::parse(String) -> Self
+
+pub struct TriggerDef {
+  event_name : String
+  modifiers : Array[TriggerModifier]
+}
+pub fn TriggerDef::add_modifier(Self, TriggerModifier) -> Self
+pub fn TriggerDef::get_delay_ms(Self) -> Int
+pub fn TriggerDef::get_from_selector(Self) -> String?
+pub fn TriggerDef::get_throttle_ms(Self) -> Int
+pub fn TriggerDef::has_once(Self) -> Bool
+pub fn TriggerDef::new(String) -> Self
+
+pub enum TriggerModifier {
+  Once
+  Changed
+  Delay(Int)
+  Throttle(Int)
+  From(String)
+  Target(String)
+  Consume
+  Queue(String)
+  Filter(String)
+}
+
+// Type aliases
+
+// Traits
+
