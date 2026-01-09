@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>htmx.mbt Demo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #eee;
+        }
+        h1 {
+            color: #00d9ff;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .demo-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        h2 {
+            color: #ff6b6b;
+            margin-top: 0;
+            font-size: 1.2rem;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        #result, #time-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 217, 255, 0.1);
+            border-radius: 8px;
+            min-height: 50px;
+        }
+        code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .note {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌙 htmx.mbt Demo</h1>
+    
+    <div class="demo-section">
+        <h2>Basic hx-get Example</h2>
+        <p>Click the button to fetch content from the server:</p>
+        <button hx-get="/api/hello" hx-target="#result" hx-swap="innerHTML">
+            Load Content
+        </button>
+        <div id="result">
+            <em>Content will appear here...</em>
+        </div>
+        <p class="note">Attributes: <code>hx-get="/api/hello"</code> <code>hx-target="#result"</code></p>
+    </div>
+
+    <div class="demo-section">
+        <h2>Different Swap Modes</h2>
+        <button hx-get="/api/time" hx-target="#time-result" hx-swap="beforeend">
+            Append Time
+        </button>
+        <button hx-get="/api/clear" hx-target="#time-result" hx-swap="innerHTML">
+            Clear
+        </button>
+        <div id="time-result"></div>
+        <p class="note">Uses <code>hx-swap="beforeend"</code> to append content</p>
+    </div>
+
+    <div class="demo-section">
+        <h2>Implementation Status</h2>
+        <p>✅ <code>hx-get</code> - Fetch content via GET request</p>
+        <p>✅ <code>hx-target</code> - Select target element for content swap</p>
+        <p>✅ <code>hx-swap</code> - Control how content is swapped (innerHTML, outerHTML, beforebegin, etc.)</p>
+        <p>✅ <code>hx-trigger</code> - Custom trigger events (defaults: click/change/submit)</p>
+        <p>⏳ <code>hx-post</code> / <code>hx-put</code> / <code>hx-delete</code> - Other HTTP methods</p>
+    </div>
+
+    <script type="module">
+        // Load the MoonBit-compiled htmx.mbt
+        import './main.js';
+    </script>
+</body>
+</html>
