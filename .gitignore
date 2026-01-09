@@ -1,4 +1,15 @@
+# macOS
 .DS_Store
+
+# MoonBit
 target/
 .mooncakes/
 .moonagent/
+_build/
+*.mbti
+
+# Environment
+.env
+
+# Build artifacts
+cmd/demo/main.js
