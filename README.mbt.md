@@ -84,4 +84,4 @@ moon test --target js
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE)
