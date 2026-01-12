@@ -30,14 +30,22 @@ const server = http.createServer((req, res) => {
         return;
     }
     if (pathname === '/main.js') {
-        fs.readFile(path.join(__dirname, 'main.js'), (err, data) => {
-            if (err) { res.writeHead(500); res.end('Error loading main.js'); }
+        // MoonBitビルド出力から配信
+        const mainJsPath = path.join(__dirname, '../../target/js/release/build/cmd/main/main.js');
+        fs.readFile(mainJsPath, (err, data) => {
+            if (err) { res.writeHead(500); res.end('Error loading main.js: ' + err.message); }
             else { res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end(data); }
         });
         return;
     }
 
     // API Endpoints
+    if (pathname === '/api/hello') {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end('<strong>Hello from htmx.mbt!</strong>');
+        return;
+    }
+
     if (pathname === '/api/time') {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(`Time: ${new Date().toLocaleTimeString()}`);

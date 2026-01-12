@@ -63,14 +63,16 @@ fn process_element(element : @dom.Element) -> Unit {
 }
 
 ///|
+/// FFI to get event target directly
+extern "js" fn get_event_target(evt : @core.Any) -> @dom.Element =
+  #|(evt) => evt.target
+
+///|
 /// Handle click events for htmx elements
 fn handle_click(evt : @core.Any) -> Unit {
-  // Get event target
+  // Get event target directly via FFI
   let event : @event.Event = @core.identity(evt)
-  guard event.target() is Some(event_target) else { return }
-
-  // Cast EventTarget to Element
-  let target_el = @dom.Element::cast_from_event_target(event_target)
+  let target_el = get_event_target(evt)
 
   // Find htmx element
   match find_htmx_element(target_el) {
@@ -87,11 +89,10 @@ fn handle_click(evt : @core.Any) -> Unit {
 }
 
 ///|
-/// Handle change events for htmx elements  
+/// Handle change events for htmx elements
 fn handle_change(evt : @core.Any) -> Unit {
   let event : @event.Event = @core.identity(evt)
-  guard event.target() is Some(event_target) else { return }
-  let target_el = @dom.Element::cast_from_event_target(event_target)
+  let target_el = get_event_target(evt)
   match find_htmx_element(target_el) {
     Some(htmx_el) => {
       let trigger = get_trigger_event(htmx_el)
@@ -108,8 +109,7 @@ fn handle_change(evt : @core.Any) -> Unit {
 /// Handle submit events for htmx forms
 fn handle_submit(evt : @core.Any) -> Unit {
   let event : @event.Event = @core.identity(evt)
-  guard event.target() is Some(event_target) else { return }
-  let target_el = @dom.Element::cast_from_event_target(event_target)
+  let target_el = get_event_target(evt)
   match find_htmx_element(target_el) {
     Some(htmx_el) => {
       let trigger = get_trigger_event(htmx_el)

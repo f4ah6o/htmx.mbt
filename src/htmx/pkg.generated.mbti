@@ -4,14 +4,27 @@ package "horideicom/htmx/src/htmx"
 import(
   "mizchi/js/browser/dom"
   "mizchi/js/browser/observer"
+  "mizchi/js/web/http"
 )
 
 // Values
+pub fn append_query_string(String, String) -> String
+
+pub fn build_form_data(Array[(String, String)]) -> @http.FormData
+
+pub fn collect_input_values(@dom.Element) -> Array[(String, String)]
+
 pub fn create_htmx_observer() -> @observer.MutationObserver
 
 pub fn find_htmx_element(@dom.Element) -> @dom.Element?
 
 pub fn find_method_url(@dom.Element) -> (HttpMethod, String)?
+
+pub fn get_form_data(@dom.Element) -> @http.FormData?
+
+pub fn get_push_url(@dom.Element) -> String?
+
+pub fn get_select(@dom.Element) -> String?
 
 pub fn get_swap_style(@dom.Element) -> SwapStyle
 
@@ -23,17 +36,31 @@ pub fn htmx_init() -> Unit
 
 pub fn init_with_observer() -> @observer.MutationObserver
 
+pub fn morph(@dom.Element, String) -> Unit
+
 pub fn parse_trigger(String) -> TriggerDef
 
 pub fn parse_triggers(String) -> Array[TriggerDef]
+
+pub fn process_response(String, String?) -> String
+
+pub fn push_url(String) -> Unit
+
+pub fn replace_url(String) -> Unit
 
 pub async fn request(String, HttpMethod) -> String
 
 pub async fn request_safe(String, HttpMethod) -> String? noraise
 
+pub async fn request_with_form(String, HttpMethod, @http.FormData?, @dom.Element?) -> String
+
+pub async fn request_with_form_safe(String, HttpMethod, @http.FormData?, @dom.Element?) -> String? noraise
+
 pub fn start_htmx_observer(@observer.MutationObserver) -> Unit
 
 pub fn swap(@dom.Element, String, SwapStyle) -> Unit
+
+pub fn values_to_query_string(Array[(String, String)]) -> String
 
 // Errors
 
@@ -46,7 +73,9 @@ pub enum HttpMethod {
   Patch
 }
 pub fn HttpMethod::from_attr(String) -> Self?
+pub fn HttpMethod::has_body(Self) -> Bool
 pub fn HttpMethod::to_string(Self) -> String
+pub impl Show for HttpMethod
 
 pub enum SwapStyle {
   InnerHTML
@@ -56,6 +85,7 @@ pub enum SwapStyle {
   BeforeEnd
   AfterEnd
   Delete
+  Morph
   None
 }
 pub fn SwapStyle::parse(String) -> Self
