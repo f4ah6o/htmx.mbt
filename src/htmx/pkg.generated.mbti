@@ -16,9 +16,13 @@ pub fn collect_input_values(@dom.Element) -> Array[(String, String)]
 
 pub fn create_htmx_observer() -> @observer.MutationObserver
 
+pub fn execute_oob_swap(@dom.Element, @dom.Element, OobSpec) -> Unit
+
 pub fn find_htmx_element(@dom.Element) -> @dom.Element?
 
 pub fn find_method_url(@dom.Element) -> (HttpMethod, String)?
+
+pub fn find_oob_target(@dom.Element, OobSpec) -> @dom.Element?
 
 pub fn get_form_data(@dom.Element) -> @http.FormData?
 
@@ -37,6 +41,8 @@ pub fn htmx_init() -> Unit
 pub fn init_with_observer() -> @observer.MutationObserver
 
 pub fn morph(@dom.Element, String) -> Unit
+
+pub fn parse_oob_spec(String) -> OobSpec
 
 pub fn parse_trigger(String) -> TriggerDef
 
@@ -77,6 +83,45 @@ pub fn HttpMethod::has_body(Self) -> Bool
 pub fn HttpMethod::to_string(Self) -> String
 pub impl Show for HttpMethod
 
+pub struct OobSpec {
+  style : SwapStyle
+  target : String?
+}
+pub fn OobSpec::from_style(SwapStyle) -> Self
+pub fn OobSpec::new(SwapStyle, String?) -> Self
+
+pub enum ScrollDirection {
+  Top
+  Bottom
+}
+pub impl Show for ScrollDirection
+
+pub struct ScrollSpec {
+  direction : ScrollDirection
+  target : String?
+}
+pub fn ScrollSpec::new(ScrollDirection, String?) -> Self
+
+pub struct ShowSpec {
+  direction : ScrollDirection
+  target : String?
+}
+pub fn ShowSpec::new(ScrollDirection, String?) -> Self
+
+pub struct SwapSpec {
+  style : SwapStyle
+  swap_delay_ms : Int
+  settle_delay_ms : Int
+  scroll : ScrollSpec?
+  show : ShowSpec?
+  focus_scroll : Bool
+  ignore_title : Bool
+}
+pub fn SwapSpec::default() -> Self
+pub fn SwapSpec::from_style(SwapStyle) -> Self
+pub fn SwapSpec::new(SwapStyle, Int, Int, ScrollSpec?, ShowSpec?, Bool, Bool) -> Self
+pub fn SwapSpec::parse(String) -> Self
+
 pub enum SwapStyle {
   InnerHTML
   OuterHTML
@@ -89,6 +134,7 @@ pub enum SwapStyle {
   None
 }
 pub fn SwapStyle::parse(String) -> Self
+pub impl Show for SwapStyle
 
 pub struct TriggerDef {
   event_name : String
