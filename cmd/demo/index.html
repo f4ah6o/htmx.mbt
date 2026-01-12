@@ -40,7 +40,8 @@
             font-size: 1.2rem;
         }
 
-        button {
+        button,
+        a[role="button"] {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
@@ -49,14 +50,18 @@
             cursor: pointer;
             font-size: 1rem;
             transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+            text-decoration: none;
         }
 
-        button:hover {
+        button:hover,
+        a[role="button"]:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
 
-        button:active {
+        button:active,
+        a[role="button"]:active {
             transform: translateY(0);
         }
 
@@ -101,12 +106,12 @@
 
     <div class="demo-section">
         <h2>Different Swap Modes</h2>
-        <button hx-get="/api/time" hx-target="#time-result" hx-swap="beforeend">
+        <a role="button" href="/api/time" hx-get="/api/time" hx-target="#time-result" hx-swap="beforeend">
             Append Time
-        </button>
-        <button hx-get="/api/clear" hx-target="#time-result" hx-swap="innerHTML">
+        </a>
+        <a role="button" href="/api/clear" hx-get="/api/clear" hx-target="#time-result" hx-swap="innerHTML">
             Clear
-        </button>
+        </a>
         <div id="time-result"></div>
         <p class="note">Uses <code>hx-swap="beforeend"</code> to append content</p>
     </div>
@@ -130,26 +135,26 @@
 
     <div class="demo-section">
         <h2>Content Selection (hx-select)</h2>
-        <button hx-get="/api/full-page" hx-target="#select-result" hx-select="#content-only">
+        <a role="button" href="/api/full-page" hx-get="/api/full-page" hx-target="#select-result" hx-select="#content-only">
             Load Only Content
-        </button>
+        </a>
         <div id="select-result"></div>
     </div>
 
     <div class="demo-section">
         <h2>Out-Of-Band Swaps (OOB)</h2>
-        <button hx-get="/api/oob-demo" hx-swap="none">
+        <a role="button" href="/api/oob-demo" hx-get="/api/oob-demo" hx-swap="none">
             Trigger OOB Swap (true)
-        </button>
+        </a>
         <div id="oob-target">Original Content</div>
         <p class="note">Uses <code>hx-swap-oob="true"</code></p>
     </div>
 
     <div class="demo-section">
         <h2>OOB with Custom Target</h2>
-        <button hx-get="/api/oob-custom" hx-swap="none">
+        <a role="button" href="/api/oob-custom" hx-get="/api/oob-custom" hx-swap="none">
             Update Sidebar (innerHTML:#sidebar)
-        </button>
+        </a>
         <div id="main-content">Main content will be updated here.</div>
         <div id="sidebar" style="background: rgba(255, 107, 107, 0.1); padding: 10px; border-radius: 8px;">
             Sidebar - waits for OOB update
@@ -159,9 +164,9 @@
 
     <div class="demo-section">
         <h2>OOB Delete Element</h2>
-        <button hx-get="/api/oob-delete" hx-swap="none">
+        <a role="button" href="/api/oob-delete" hx-get="/api/oob-delete" hx-swap="none">
             Remove Temp Element
-        </button>
+        </a>
         <div id="temp-element" style="background: rgba(255, 107, 107, 0.2); padding: 10px; border-radius: 8px;">
             ⏳ Temporary element - will be deleted via OOB
         </div>
@@ -184,12 +189,12 @@
 
     <div class="demo-section">
         <h2>History API</h2>
-        <button hx-get="/api/page1" hx-push-url="true" hx-target="#history-content">
+        <a role="button" href="/api/page1" hx-get="/api/page1" hx-push-url="true" hx-target="#history-content">
             Go to Page 1 (Push URL)
-        </button>
-        <button hx-get="/api/page2" hx-push-url="/custom/url" hx-target="#history-content">
+        </a>
+        <a role="button" href="/api/page2" hx-get="/api/page2" hx-push-url="/custom/url" hx-target="#history-content">
             Go to Page 2 (Custom URL)
-        </button>
+        </a>
         <div id="history-content">Current Content</div>
     </div>
 
