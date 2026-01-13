@@ -1,0 +1,17 @@
+{
+  "name": "htmx-mbt",
+  "private": true,
+  "scripts": {
+    "build:htmx-test": "moon build --target js",
+    "test:htmx": "npm run build:htmx-test && web-test-runner --config web-test-runner.config.mjs --browsers chrome --concurrency 1"
+  },
+  "devDependencies": {
+    "@web/test-runner": "^0.20.2",
+    "@web/test-runner-chrome": "^0.18.1",
+    "chai": "^4.5.0",
+    "chai-dom": "^1.12.1",
+    "mocha": "^11.7.4",
+    "mock-socket": "^9.3.1",
+    "sinon": "^10.0.1"
+  }
+}
