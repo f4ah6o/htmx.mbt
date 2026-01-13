@@ -3,6 +3,7 @@
 
 # MoonBit
 target/
+target
 .mooncakes/
 .moonagent/
 _build/
@@ -13,3 +14,7 @@ _build/
 
 # Build artifacts
 cmd/demo/main.js
+
+# Node
+node_modules/
+coverage/
