@@ -82,6 +82,19 @@ moon build --target js
 moon test --target js
 ```
 
+### Upstream htmx Test Suite (Headless Chrome)
+
+The upstream htmx test suite is vendored under `test/` and runs in headless
+Chrome via `web-test-runner`.
+
+```bash
+# Install test dependencies
+npm install
+
+# Build htmx.mbt and run the upstream suite in headless Chrome
+npm run test:htmx
+```
+
 ## License
 
 [Apache-2.0](./LICENSE)
