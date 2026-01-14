@@ -273,7 +273,7 @@ describe('hx-push-url attribute', function() {
     })
   }
 
-  it.skip('normalizePath falls back to no normalization if path not valid URL', function() {
+  it('normalizePath falls back to no normalization if path not valid URL', function() {
     // path normalization has a bug breaking it right now preventing this test
     htmx._('saveToHistoryCache')('http://', make('<div>'))
     htmx._('saveToHistoryCache')('http//', make('<div>'))
