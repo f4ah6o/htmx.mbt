@@ -23,7 +23,7 @@ pub fn morph(target : @dom.Element, content : String) -> Unit {
 
 ///|
 /// Recursively morph old element to match new element
-fn morph_element(old_el : @dom.Element, new_el : @dom.Element) -> Unit {
+pub fn morph_element(old_el : @dom.Element, new_el : @dom.Element) -> Unit {
   // If tags are different, strict replacement
   if old_el.tagName() != new_el.tagName() {
     let new_node = new_el.as_node()

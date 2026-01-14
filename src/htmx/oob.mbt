@@ -116,10 +116,8 @@ pub fn execute_oob_swap(
       insert_adjacent(target_el, "afterend", content)
     }
     Morph => {
-      // For OOB, morph behaves like outerHTML with morphing
-      let content = get_outer_html(new_el)
-      set_outer_html(target_el, content)
-      // TODO: Apply actual morphing algorithm
+      // Direct element-to-element morphing
+      morph_element(target_el, new_el)
     }
   }
 }

@@ -181,3 +181,13 @@ test "parse_oob_spec complex selector" {
   }
   inspect(spec.target, content="Some(\"[data-role='content']\")")
 }
+
+///|
+test "parse_oob_spec morph with target" {
+  let spec = parse_oob_spec("morph:#target")
+  match spec.style {
+    Morph => inspect("ok", content="ok")
+    _ => inspect("error", content="Expected Morph")
+  }
+  inspect(spec.target, content="Some(\"#target\")")
+}
