@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Script Src Test - Issue #3</title>
+  <style>
+    body { padding: 20px; font-family: sans-serif; }
+    #result { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+    .pass { color: green; font-weight: bold; }
+    .fail { color: red; font-weight: bold; }
+    .info { color: blue; }
+    button { margin: 5px; padding: 10px; }
+    #target { margin-top: 20px; padding: 20px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Script Src Loading Test - Issue #3</h1>
+  <p>Test that external scripts with src attribute are loaded after swap</p>
+
+  <button id="loadBtn">Load External Script</button>
+  <button id="loadTwiceBtn">Load Twice (Test Duplicate Prevention)</button>
+  <button id="resetBtn">Reset</button>
+
+  <div id="target">Target area - content will be swapped here</div>
+  <div id="result"></div>
+
+  <script src="../target/js/release/build/cmd/htmx_test/htmx_test.js"></script>
+  <script>
+    const resultDiv = document.getElementById('result');
+    const target = document.getElementById('target');
+
+    function log(msg, isPass = null) {
+      const div = document.createElement('div');
+      div.textContent = msg;
+      if (isPass === true) div.className = 'pass';
+      else if (isPass === false) div.className = 'fail';
+      else div.className = 'info';
+      resultDiv.appendChild(div);
+      console.log(msg);
+    }
+
+    function reset() {
+      resultDiv.innerHTML = '';
+      delete window.testScriptLoaded;
+      delete window.globalWasCalled;
+      target.innerHTML = 'Target area - content will be swapped here';
+      log('Reset complete');
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', reset);
+
+    // Test 1: Load external script with src attribute
+    document.getElementById('loadBtn').addEventListener('click', function() {
+      reset();
+      log('Test 1: Loading external script with src attribute...');
+
+      // Set up htmx to load content
+      target.setAttribute('hx-get', 'test-data/setGlobal.js');
+      target.setAttribute('hx-swap', 'innerHTML');
+
+      // Process the element with htmx
+      htmx.process(target);
+
+      // Mock the response by simulating what htmx would do
+      // Simulate server response with script tag
+      setTimeout(function() {
+        // Simulate swap - this is what happens in processor.mbt after receiving response
+        const responseHTML = '<script id="setGlobalScript" src="../test/lib/setGlobal.js"><\/script>';
+        target.innerHTML = responseHTML;
+
+        // The script processing should happen in processor.mbt
+        // Check if script element exists after processing
+        setTimeout(function() {
+          const scriptEl = document.getElementById('setGlobalScript');
+          if (scriptEl) {
+            log('PASS: Script element exists in DOM', true);
+
+            // Wait for script to load and execute
+            scriptEl.addEventListener('load', function() {
+              log('PASS: Script load event fired', true);
+              if (window.globalWasCalled || window.testScriptLoaded) {
+                log('PASS: Script executed successfully - global variable set', true);
+              } else {
+                log('FAIL: Script loaded but global variable not set', false);
+              }
+            });
+
+            scriptEl.addEventListener('error', function() {
+              log('FAIL: Script failed to load (error event)', false);
+            });
+          } else {
+            log('FAIL: Script element not found in DOM', false);
+          }
+        }, 100);
+      }, 100);
+    });
+
+    // Test 2: Load twice to test duplicate prevention
+    document.getElementById('loadTwiceBtn').addEventListener('click', function() {
+      reset();
+      log('Test 2: Loading script twice to test duplicate prevention...');
+
+      let loadCount = 0;
+      window.testLoadCount = 0;
+
+      // First load
+      const responseHTML = '<script id="testScript" src="../test/lib/setGlobal.js"><\/script>';
+      target.innerHTML = responseHTML;
+
+      setTimeout(function() {
+        const script1 = document.getElementById('testScript');
+        if (script1) {
+          script1.addEventListener('load', function() {
+            loadCount++;
+            log(`First load complete (${loadCount}/2)`, true);
+
+            // Second load - should be prevented by tracking
+            setTimeout(function() {
+              target.innerHTML = responseHTML;
+
+              setTimeout(function() {
+                const script2 = document.getElementById('testScript');
+                if (script2) {
+                  script2.addEventListener('load', function() {
+                    loadCount++;
+                    log(`Second load complete (${loadCount}/2)`, true);
+
+                    // Check if duplicate was prevented
+                    if (loadCount <= 1) {
+                      log('PASS: Duplicate script load was prevented', true);
+                    } else {
+                      log('INFO: Script loaded ' + loadCount + ' times (expected: 1 with duplicate prevention)');
+                    }
+                  });
+                }
+              }, 100);
+            }, 100);
+          });
+        }
+      }, 100);
+    });
+
+    // Initialize htmx
+    htmx.init();
+    log('Test page loaded. Click buttons to test Issue #3 implementation.');
+  </script>
+</body>
+</html>

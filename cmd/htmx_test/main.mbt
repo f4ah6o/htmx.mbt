@@ -238,6 +238,9 @@ extern "js" fn process_any(target : @core.Any) -> Unit =
   #|
   #|  // Function to process a single element for load trigger
   #|  const processElement = (el) => {
+  #|    // Ensure el is a valid DOM element with getAttribute method
+  #|    if (!el || typeof el.getAttribute !== 'function') return;
+  #|
   #|    const trigger = el.getAttribute('hx-trigger') || el.getAttribute('data-hx-trigger');
   #|    if (trigger) {
   #|      const parts = trigger.split(',').map(s => s.trim());

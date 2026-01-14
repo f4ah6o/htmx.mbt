@@ -239,47 +239,47 @@ extern "js" fn create_response_callback(
   #|      // Only executes scripts with no type or type='text/javascript'
   #|      // Exceptions are caught to prevent breaking rendering
   #|      if (window.htmx && window.htmx.config && window.htmx.config.allowEval !== false) {
-  #|        // Use setTimeout to defer script processing, allowing load event listeners to be attached
-  #|        setTimeout(() => {
-  #|          const scripts = target.querySelectorAll('script');
-  #|          for (const script of scripts) {
-  #|            const type = script.getAttribute('type');
-  #|            if (!type || type === 'text/javascript') {
-  #|              const src = script.getAttribute('src');
-  #|
-  #|              if (src) {
-  #|                // External script with src attribute (Issue #3)
-  #|                // innerHTML doesn't trigger script loading, so we need to create a new script element
-  #|                const newScript = document.createElement('script');
-  #|                newScript.src = src;
-  #|
-  #|                // Copy necessary attributes including ID for test compatibility
-  #|                const attrsToCopy = ['id', 'nonce', 'referrerpolicy', 'type', 'async', 'defer', 'crossorigin'];
-  #|                for (const attr of attrsToCopy) {
-  #|                  if (script.hasAttribute(attr)) {
-  #|                    newScript.setAttribute(attr, script.getAttribute(attr));
-  #|                  }
-  #|                }
-  #|
-  #|                // Prevent duplicate execution: skip if script with same ID was already processed
-  #|                if (newScript.id && script.hasAttribute('data-htmx-script-processed')) {
-  #|                  continue;
-  #|                }
-  #|
-  #|                // Mark as processed and replace to trigger loading
-  #|                script.setAttribute('data-htmx-script-processed', 'true');
-  #|                script.replaceWith(newScript);
-  #|              } else if (script.textContent) {
-  #|                // Inline script (Issue #2)
-  #|                try {
-  #|                  (new Function(script.textContent))();
-  #|                } catch (e) {
-  #|                  console.error('htmx.mbt: Error executing script:', e);
+  #|        // Initialize internal tracking for loaded scripts to prevent duplicate execution
+  #|        if (!window.htmx._internal) window.htmx._internal = {};
+  #|        if (!window.htmx._internal.loadedScripts) window.htmx._internal.loadedScripts = new Set();
+  #|        const scripts = target.querySelectorAll('script');
+  #|        for (const script of scripts) {
+  #|          const type = script.getAttribute('type');
+  #|          if (!type || type === 'text/javascript') {
+  #|            const src = script.getAttribute('src');
+  #|            if (src) {
+  #|              // External script with src attribute (Issue #3)
+  #|              // innerHTML doesn't trigger script loading, so we need to create a new script element
+  #|              // Prevent duplicate execution by checking if script URL was already loaded
+  #|              if (window.htmx._internal.loadedScripts.has(src)) {
+  #|                // Already loaded, remove original element to prevent duplicates
+  #|                script.remove();
+  #|                continue;
+  #|              }
+  #|              const newScript = document.createElement('script');
+  #|              newScript.src = src;
+  #|              // Copy necessary attributes including ID for test compatibility
+  #|              const attrsToCopy = ['id', 'nonce', 'referrerpolicy', 'type', 'async', 'defer', 'crossorigin'];
+  #|              for (const attr of attrsToCopy) {
+  #|                if (script.hasAttribute(attr)) {
+  #|                  newScript.setAttribute(attr, script.getAttribute(attr));
   #|                }
   #|              }
+  #|              // Mark as loaded (at load start time to prevent race conditions)
+  #|              window.htmx._internal.loadedScripts.add(src);
+  #|              // Replace to trigger loading
+  #|              script.replaceWith(newScript);
+  #|            } else if (script.textContent) {
+  #|              // Inline script (Issue #2)
+  #|              try {
+  #|                (new Function(script.textContent))();
+  #|              } catch (e) {
+  #|                console.error('htmx.mbt: Error executing script:', e);
+  #|              }
+  #|              script.remove();
   #|            }
   #|          }
-  #|        }, 0);
+  #|        }
   #|      }
   #|
   #|      // Handle history API
