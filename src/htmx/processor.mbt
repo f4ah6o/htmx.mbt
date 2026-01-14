@@ -152,9 +152,10 @@ extern "js" fn create_response_callback(
   #|    if (responseText !== null) {
   #|      const select_val = element.getAttribute("hx-select") || element.getAttribute("data-hx-select");
   #|      let final_content = responseText;
+  #|      const parser = new DOMParser();
+  #|      const doc = parser.parseFromString(responseText, 'text/html');
+
   #|      if (select_val) {
-  #|        const parser = new DOMParser();
-  #|        const doc = parser.parseFromString(responseText, 'text/html');
   #|        const selected = doc.querySelector(select_val);
   #|        if (selected) {
   #|          final_content = selected.outerHTML;
@@ -162,6 +163,76 @@ extern "js" fn create_response_callback(
   #|          final_content = "";
   #|        }
   #|      }
+
+  #|      // If select was used, re-parse for OOB processing
+  #|      let oobDoc = doc;
+  #|      if (select_val) {
+  #|        oobDoc = parser.parseFromString(final_content, 'text/html');
+  #|      }
+  #|
+  #|      // Handle OOB swaps (hx-swap-oob)
+  #|      const oobElements = oobDoc.querySelectorAll('[hx-swap-oob], [data-hx-swap-oob]');
+  #|      for (const oobEl of oobElements) {
+  #|        const oobVal = oobEl.getAttribute('hx-swap-oob') || oobEl.getAttribute('data-hx-swap-oob') || 'true';
+  #|        let targetSelector = null;
+  #|        let swapStyle = 'innerHTML'; // default
+  #|
+  #|        // Parse OOB specification
+  #|        if (oobVal === 'true') {
+  #|          swapStyle = 'outerHTML';
+  #|          const id = oobEl.getAttribute('id');
+  #|          if (id) targetSelector = '#' + CSS.escape(id);
+  #|        } else if (oobVal.includes(':')) {
+  #|          const parts = oobVal.split(':');
+  #|          swapStyle = parts[0] || 'innerHTML';
+  #|          targetSelector = parts[1];
+  #|        } else {
+  #|          swapStyle = oobVal;
+  #|          const id = oobEl.getAttribute('id');
+  #|          if (id) targetSelector = '#' + CSS.escape(id);
+  #|        }
+  #|
+  #|        // Handle delete style
+  #|        if (swapStyle === 'delete') {
+  #|          if (targetSelector) {
+  #|            const targets = document.querySelectorAll(targetSelector);
+  #|            for (const targetEl of targets) {
+  #|              targetEl.remove();
+  #|            }
+  #|          }
+  #|          oobEl.remove();
+  #|          continue;
+  #|        }
+  #|
+  #|        // Find and swap target
+  #|        if (targetSelector) {
+  #|          const targets = document.querySelectorAll(targetSelector);
+  #|          if (targets.length === 0) {
+  #|            // No target found, dispatch error event
+  #|            const evt = new CustomEvent('htmx:oobErrorNoTarget', {
+  #|              bubbles: true,
+  #|              cancelable: true,
+  #|              detail: { content: oobEl }
+  #|            });
+  #|            document.body.dispatchEvent(evt);
+  #|          } else {
+  #|            // Swap into all matching targets
+  #|            for (const targetEl of targets) {
+  #|              if (swapStyle === 'innerHTML') {
+  #|                targetEl.innerHTML = oobEl.innerHTML;
+  #|              } else if (swapStyle === 'outerHTML') {
+  #|                targetEl.outerHTML = oobEl.outerHTML;
+  #|              }
+  #|            }
+  #|          }
+  #|        }
+  #|
+  #|        // Remove OOB element from response
+  #|        oobEl.remove();
+  #|      }
+  #|
+  #|      // Get final content after OOB removal
+  #|      final_content = oobDoc.body.innerHTML;
   #|
   #|      // Simple innerHTML swap
   #|      target.innerHTML = final_content;
