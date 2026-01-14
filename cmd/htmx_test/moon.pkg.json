@@ -2,7 +2,7 @@
   "is-main": true,
   "import": [
     {
-      "path": "horideicom/htmx/src/htmx",
+      "path": "f4ah6o/htmx/src/htmx",
       "alias": "htmx"
     },
     "mizchi/js/core"

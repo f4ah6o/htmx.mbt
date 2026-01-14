@@ -25,7 +25,7 @@ This implementation strives for feature parity with htmx 1.9.x, strictly typed a
 ## Installation
 
 ```bash
-moon add horideicom/htmx
+moon add f4ah6o/htmx
 ```
 
 ## Usage
@@ -33,7 +33,7 @@ moon add horideicom/htmx
 Initialize the library in your main entry point:
 
 ```moonbit
-import horideicom/htmx/htmx
+import f4ah6o/htmx/htmx
 
 fn main {
   htmx.htmx_init()
