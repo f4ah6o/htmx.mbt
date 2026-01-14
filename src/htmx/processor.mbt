@@ -38,6 +38,24 @@ fn process_element_with_trigger(
 
   log_debug("Disabled elements count: " + disabled_elements.length().to_string())
 
+  // Get indicator elements before request
+  let indicator_elements = get_indicator_elements(element)
+
+  if indicator_elements.length() > 0 {
+    log_debug("Found " + indicator_elements.length().to_string() + " indicator element(s)")
+  } else {
+    log_debug("No indicator attribute found, using element itself")
+  }
+
+  log_debug("Indicator elements count: " + indicator_elements.length().to_string())
+
+  // Show indicators before request
+  if indicator_elements.length() > 0 {
+    log_debug("About to call show_indicators with count: " + indicator_elements.length().to_string())
+    show_indicators(indicator_elements)
+    log_debug("show_indicators returned")
+  }
+
   // Disable elements before request
   if disabled_elements.length() > 0 {
     log_debug("About to call disable_elements with count: " + disabled_elements.length().to_string())
@@ -52,6 +70,7 @@ fn process_element_with_trigger(
     swap_style,
     url,
     disabled_elements,
+    indicator_elements,
   )
 
   // Handle form data for POST/PUT/PATCH vs GET/DELETE
@@ -83,9 +102,25 @@ extern "js" fn create_response_callback(
   swap_style : SwapStyle,
   url : String,
   disabled_elements : Array[@dom.Element],
+  indicator_elements : Array[@dom.Element],
 ) -> @core.Any =
-  #|(element, target, swap_style, url, disabled_elements) => {
+  #|(element, target, swap_style, url, disabled_elements, indicator_elements) => {
   #|  return function(responseText) {
+  #|    // Hide indicators after request
+  #|    if (indicator_elements.length > 0) {
+  #|      for (const el of indicator_elements) {
+  #|        const key = "htmx-internal-data";
+  #|        const data = el[key];
+  #|        if (data) {
+  #|          data.indicatorCount = (data.indicatorCount || 1) - 1;
+  #|        }
+  #|        const count = data ? (data.indicatorCount || 0) : 0;
+  #|        if (count === 0) {
+  #|          el.classList.remove("htmx-request");
+  #|        }
+  #|      }
+  #|    }
+  #|
   #|    // Re-enable disabled elements after request
   #|    if (disabled_elements.length > 0) {
   #|      for (const el of disabled_elements) {

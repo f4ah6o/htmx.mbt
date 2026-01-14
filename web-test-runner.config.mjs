@@ -109,7 +109,7 @@ const config = {
     '!test/core/ws.js',  // WebSocket not implemented
     // More attribute tests that depend on unimplemented features
     '!test/attributes/hx-sync.js',
-    '!test/attributes/hx-indicator.js',
+    // '!test/attributes/hx-indicator.js',  // ENABLED for TDD
     // '!test/attributes/hx-disable.js',  // try enabling
     '!test/attributes/hx-encoding.js',
     '!test/attributes/hx-error-url.js',
