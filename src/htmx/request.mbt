@@ -48,11 +48,47 @@ pub fn HttpMethod::from_attr(attr : String) -> HttpMethod? {
 }
 
 ///|
+/// XMLHttpRequest FFI bindings for Sinon compatibility
+extern "js" fn create_xhr() -> @core.Any =
+  #|() => new XMLHttpRequest()
+
+///|
+extern "js" fn xhr_open(
+  xhr : @core.Any,
+  method_ : String,
+  url : String,
+  async_ : Bool,
+) -> Unit =
+  #|(xhr, method_, url, async_) => xhr.open(method_, url, async_)
+
+///|
+extern "js" fn xhr_set_header(
+  xhr : @core.Any,
+  name : String,
+  value : String,
+) -> Unit =
+  #|(xhr, name, value) => xhr.setRequestHeader(name, value)
+
+///|
+extern "js" fn xhr_send(xhr : @core.Any, body : @core.Any) -> Unit =
+  #|(xhr, body) => xhr.send(body)
+
+///|
+extern "js" fn xhr_send_no_body(xhr : @core.Any) -> Unit =
+  #|(xhr) => xhr.send()
+
+///|
+extern "js" fn xhr_get_response(xhr : @core.Any) -> String =
+  #|(xhr) => xhr.responseText || ''
+
+///|
+extern "js" fn xhr_get_status(xhr : @core.Any) -> Int =
+  #|(xhr) => xhr.status
+
+///|
 /// Standard htmx request headers
 fn get_htmx_headers(trigger_element : @dom.Element?) -> Map[String, String] {
   let headers : Map[String, String] = { "HX-Request": "true" }
-
-  // Add trigger element info if provided
   match trigger_element {
     Some(el) => {
       match el.getAttribute("id") {
@@ -70,7 +106,51 @@ fn get_htmx_headers(trigger_element : @dom.Element?) -> Map[String, String] {
 }
 
 ///|
-/// Perform HTTP request with optional FormData body
+/// Perform synchronous XHR request (for Sinon mock server compatibility)
+pub fn request_sync(
+  url : String,
+  http_method : HttpMethod,
+  trigger_element : @dom.Element?,
+) -> String? {
+  let xhr = create_xhr()
+  xhr_open(xhr, http_method.to_string(), url, false)
+  let headers = get_htmx_headers(trigger_element)
+  headers.each(fn(name, value) { xhr_set_header(xhr, name, value) })
+  xhr_send_no_body(xhr)
+  let status = xhr_get_status(xhr)
+  if status >= 200 && status < 300 {
+    Some(xhr_get_response(xhr))
+  } else {
+    None
+  }
+}
+
+///|
+/// Perform synchronous XHR request with FormData body
+pub fn request_with_form_sync(
+  url : String,
+  http_method : HttpMethod,
+  form_data : @http.FormData?,
+  trigger_element : @dom.Element?,
+) -> String? {
+  let xhr = create_xhr()
+  xhr_open(xhr, http_method.to_string(), url, false)
+  let headers = get_htmx_headers(trigger_element)
+  headers.each(fn(name, value) { xhr_set_header(xhr, name, value) })
+  match form_data {
+    Some(fd) => xhr_send(xhr, fd.as_any())
+    None => xhr_send_no_body(xhr)
+  }
+  let status = xhr_get_status(xhr)
+  if status >= 200 && status < 300 {
+    Some(xhr_get_response(xhr))
+  } else {
+    None
+  }
+}
+
+///|
+/// Perform HTTP request with optional FormData body (async version)
 pub async fn request_with_form(
   url : String,
   http_method : HttpMethod,
