@@ -1,24 +1,27 @@
 ///|
-/// Process a single htmx element - perform request and swap (noraise version)
-async fn process_element_internal(element : @dom.Element) -> Unit noraise {
+/// Process a single htmx element - perform request and swap (synchronous for Sinon compatibility)
+fn process_element_with_trigger(
+  element : @dom.Element,
+  trigger_el : @dom.Element?,
+) -> Unit {
   // Find method and URL
   let method_url = find_method_url(element)
   guard method_url is Some((http_method, url)) else { return }
+
+  // Validate form before making request (pass trigger element for formnovalidate check)
+  if not(validate_element_with_trigger(element, trigger_el)) {
+    return
+  }
 
   // Get target and swap style
   let target = get_target(element)
   let swap_style = get_swap_style(element)
 
   // Handle form data for POST/PUT/PATCH
-  @core.log(
-    @core.any(
-      "Processing element: \{element.tagName()} Method: \{http_method} URL: \{url}",
-    ),
-  )
   let response = if http_method.has_body() {
     // Collect form data for methods that have a body
     let form_data = get_form_data(element)
-    request_with_form_safe(url, http_method, form_data, Some(element))
+    request_with_form_sync(url, http_method, form_data, Some(element))
   } else {
     // For GET/DELETE, append form values as query params
     let actual_url = match get_form_data(element) {
@@ -31,8 +34,7 @@ async fn process_element_internal(element : @dom.Element) -> Unit noraise {
       }
       None => url
     }
-    @core.log(@core.any("Sending request to: \{actual_url}"))
-    request_safe(actual_url, http_method)
+    request_sync(actual_url, http_method, Some(element))
   }
 
   // Swap content if we got a response
@@ -52,14 +54,14 @@ async fn process_element_internal(element : @dom.Element) -> Unit noraise {
         None => ()
       }
     }
-    None => @core.log(@core.any("htmx request failed"))
+    None => ()
   }
 }
 
 ///|
-/// Wrapper to process element with no-raise for run_async
+/// Wrapper for process element (kept for API compatibility)
 fn process_element(element : @dom.Element) -> Unit {
-  @core.run_async(async fn() noraise { process_element_internal(element) })
+  process_element_with_trigger(element, None)
 }
 
 ///|
@@ -68,20 +70,53 @@ extern "js" fn get_event_target(evt : @core.Any) -> @dom.Element =
   #|(evt) => evt.target
 
 ///|
+/// Check if element is a submit button
+extern "js" fn is_submit_button(el : @dom.Element) -> Bool =
+  #|(el) => el && el.tagName === 'BUTTON' && (el.type === 'submit' || !el.type)
+
+///|
+/// Find the closest form ancestor using FFI
+extern "js" fn find_closest_form(el : @dom.Element) -> @dom.Element =
+  #|(el) => el.form || el.closest('form')
+
+///|
+/// Check if element has a containing form
+extern "js" fn has_containing_form(el : @dom.Element) -> Bool =
+  #|(el) => !!(el.form || el.closest('form'))
+
+///|
 /// Handle click events for htmx elements
 fn handle_click(evt : @core.Any) -> Unit {
-  // Get event target directly via FFI
   let event : @event.Event = @core.identity(evt)
   let target_el = get_event_target(evt)
 
-  // Find htmx element
+  // Check if clicking a submit button inside an htmx form
+  if is_submit_button(target_el) {
+    if has_containing_form(target_el) {
+      let form = find_closest_form(target_el)
+      // Check if form itself has an htmx method attribute
+      match find_method_url(form) {
+        Some(_) => {
+          // Submit buttons should always submit the form, regardless of hx-trigger
+          // The form's hx-trigger only affects what events automatically trigger,
+          // not explicit user action of clicking a submit button
+          event.preventDefault()
+          // Pass the button as submitter for formnovalidate check
+          process_element_with_trigger(form, Some(target_el))
+          return
+        }
+        None => ()
+      }
+    }
+  }
+
+  // Find htmx element and handle click trigger
   match find_htmx_element(target_el) {
     Some(htmx_el) => {
-      // Check if trigger is click
       let trigger = get_trigger_event(htmx_el)
       if trigger == "click" {
         event.preventDefault()
-        process_element(htmx_el)
+        process_element_with_trigger(htmx_el, Some(target_el))
       }
     }
     Option::None => ()
@@ -106,16 +141,23 @@ fn handle_change(evt : @core.Any) -> Unit {
 }
 
 ///|
+/// Get submitter from submit event
+extern "js" fn get_event_submitter(evt : @core.Any) -> @dom.Element? =
+  #|(evt) => evt.submitter || null
+
+///|
 /// Handle submit events for htmx forms
 fn handle_submit(evt : @core.Any) -> Unit {
   let event : @event.Event = @core.identity(evt)
   let target_el = get_event_target(evt)
+  let submitter = get_event_submitter(evt)
   match find_htmx_element(target_el) {
     Some(htmx_el) => {
       let trigger = get_trigger_event(htmx_el)
       if trigger == "submit" {
         event.preventDefault()
-        process_element(htmx_el)
+        // Pass submitter for formnovalidate check
+        process_element_with_trigger(htmx_el, submitter)
       }
     }
     Option::None => ()
@@ -132,5 +174,4 @@ pub fn htmx_init() -> Unit {
   doc_target.addEventListener("click", handle_click)
   doc_target.addEventListener("change", handle_change)
   doc_target.addEventListener("submit", handle_submit)
-  @core.log(@core.any("htmx.mbt initialized"))
 }
