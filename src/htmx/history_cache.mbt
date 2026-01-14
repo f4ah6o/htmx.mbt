@@ -16,16 +16,19 @@ pub fn normalize_path(path : String) -> String {
 ///|
 extern "js" fn normalize_path_impl(path : String) -> String =
   #|(path) => {
+  #|  let parsed = false;
   #|  try {
   #|    const url = new URL(path, 'http://x');
   #|    if (url) {
   #|      path = url.pathname + url.search;
+  #|      parsed = true;
   #|    }
   #|  } catch (e) {
-  #|    // If URL parsing fails, use path as-is
+  #|    // If URL parsing fails, use path as-is (no trailing slash removal)
   #|  }
   #|  // Remove trailing slash unless it's the index
-  #|  if (path !== '/') {
+  #|  // Only apply this for valid URLs that were parsed successfully
+  #|  if (parsed && path !== '/') {
   #|    path = path.replace(/\/+$/, '');
   #|  }
   #|  return path;
