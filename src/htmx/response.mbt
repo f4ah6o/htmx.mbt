@@ -49,7 +49,12 @@ fn process_oob_swaps(container : @dom.Element) -> Unit {
         // Remove from response content
         el.remove()
       }
-      None => ()
+      None => {
+        // Dispatch error event when target not found
+        dispatch_oob_error_no_target(el)
+        // Still remove OOB element from response content
+        el.remove()
+      }
     }
   }
 }
@@ -63,3 +68,15 @@ extern "js" fn get_inner_html(element : @dom.Element) -> String =
 /// Get outerHTML property
 extern "js" fn get_outer_html(element : @dom.Element) -> String =
   #|(el) => el.outerHTML
+
+///|
+/// Dispatch htmx:oobErrorNoTarget event when OOB target not found
+extern "js" fn dispatch_oob_error_no_target(oob_el : @dom.Element) -> Unit =
+  #|(oobEl) => {
+  #|  const evt = new CustomEvent('htmx:oobErrorNoTarget', {
+  #|    bubbles: true,
+  #|    cancelable: true,
+  #|    detail: { content: oobEl }
+  #|  });
+  #|  document.body.dispatchEvent(evt);
+  #|}
