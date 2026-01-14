@@ -154,7 +154,6 @@ extern "js" fn create_response_callback(
   #|      let final_content = responseText;
   #|      const parser = new DOMParser();
   #|      const doc = parser.parseFromString(responseText, 'text/html');
-
   #|      if (select_val) {
   #|        const selected = doc.querySelector(select_val);
   #|        if (selected) {
@@ -163,7 +162,6 @@ extern "js" fn create_response_callback(
   #|          final_content = "";
   #|        }
   #|      }
-
   #|      // If select was used, re-parse for OOB processing
   #|      let oobDoc = doc;
   #|      if (select_val) {
@@ -236,6 +234,23 @@ extern "js" fn create_response_callback(
   #|
   #|      // Simple innerHTML swap
   #|      target.innerHTML = final_content;
+  #|
+  #|      // Evaluate inline scripts after swap (Issue #2)
+  #|      // Only executes scripts with no type or type='text/javascript'
+  #|      // Exceptions are caught to prevent breaking rendering
+  #|      if (window.htmx && window.htmx.config && window.htmx.config.allowEval !== false) {
+  #|        const scripts = target.querySelectorAll('script');
+  #|        for (const script of scripts) {
+  #|          const type = script.getAttribute('type');
+  #|          if (!type || type === 'text/javascript') {
+  #|            try {
+  #|              (new Function(script.textContent))();
+  #|            } catch (e) {
+  #|              console.error('htmx.mbt: Error executing script:', e);
+  #|            }
+  #|          }
+  #|        }
+  #|      }
   #|
   #|      // Handle history API
   #|      const push_val = element.getAttribute("hx-push-url") || element.getAttribute("data-hx-push-url");

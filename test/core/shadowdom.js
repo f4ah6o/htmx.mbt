@@ -771,7 +771,6 @@ describe('Core htmx Shadow DOM Tests', function() {
   })
 
   it('script node exceptions do not break rendering', function() {
-    this.skip('Rendering does not break, but the exception bubbles up and mocha reports it')
     this.server.respondWith('GET', '/test', "clicked<script type='text/javascript'>throw 'foo';</script>")
     var div = make("<div hx-get='/test'></div>")
     div.click()
