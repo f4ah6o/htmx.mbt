@@ -80,7 +80,9 @@ extern "js" fn dispatch_validation_failed_event(
 ///|
 /// Create errors array and dispatch htmx:validation:failed event in one FFI call
 /// NOTE: This function causes test to hang - disabled for now
-extern "js" fn dispatch_validation_failed_with_array(form : @dom.Element) -> Unit =
+extern "js" fn dispatch_validation_failed_with_array(
+  form : @dom.Element,
+) -> Unit =
   #|(form) => {
   #|  const invalids = [];
   #|  const inputs = form.querySelectorAll('input, select, textarea');
@@ -202,6 +204,7 @@ pub fn validate_element(element : @dom.Element) -> Bool {
         let first = invalids[0]
         focus_element(first)
         let _ = form_report_validity(element)
+
       }
       return false
     }

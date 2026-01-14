@@ -1,9 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "horideicom/htmx/src/htmx"
+package "f4ah6o/htmx/src/htmx"
 
 import(
   "mizchi/js/browser/dom"
   "mizchi/js/browser/observer"
+  "mizchi/js/core"
   "mizchi/js/web/http"
 )
 
@@ -16,6 +17,10 @@ pub fn collect_input_values(@dom.Element) -> Array[(String, String)]
 
 pub fn create_htmx_observer() -> @observer.MutationObserver
 
+pub fn disable_elements(Array[@dom.Element]) -> Unit
+
+pub fn enable_elements(Array[@dom.Element]) -> Unit
+
 pub fn execute_oob_swap(@dom.Element, @dom.Element, OobSpec) -> Unit
 
 pub fn find_htmx_element(@dom.Element) -> @dom.Element?
@@ -24,7 +29,17 @@ pub fn find_method_url(@dom.Element) -> (HttpMethod, String)?
 
 pub fn find_oob_target(@dom.Element, OobSpec) -> @dom.Element?
 
+pub fn find_targets_by_selector(@dom.Element, String) -> Array[@dom.Element]
+
+pub fn get_disabled_elt(@dom.Element) -> String?
+
 pub fn get_form_data(@dom.Element) -> @http.FormData?
+
+pub fn get_indicator(@dom.Element) -> String?
+
+pub fn get_indicator_elements(@dom.Element) -> Array[@dom.Element]
+
+pub fn get_indicator_with_inherit(@dom.Element) -> String?
 
 pub fn get_push_url(@dom.Element) -> String?
 
@@ -36,11 +51,15 @@ pub fn get_target(@dom.Element) -> @dom.Element
 
 pub fn get_trigger_event(@dom.Element) -> String
 
+pub fn hide_indicators(Array[@dom.Element]) -> Unit
+
 pub fn htmx_init() -> Unit
 
 pub fn init_with_observer() -> @observer.MutationObserver
 
 pub fn morph(@dom.Element, String) -> Unit
+
+pub fn morph_element(@dom.Element, @dom.Element) -> Unit
 
 pub fn parse_oob_spec(String) -> OobSpec
 
@@ -56,15 +75,29 @@ pub fn replace_url(String) -> Unit
 
 pub async fn request(String, HttpMethod) -> String
 
+pub fn request_async(String, HttpMethod, @dom.Element?, @core.Any) -> Unit
+
 pub async fn request_safe(String, HttpMethod) -> String? noraise
+
+pub fn request_sync(String, HttpMethod, @dom.Element?) -> String?
 
 pub async fn request_with_form(String, HttpMethod, @http.FormData?, @dom.Element?) -> String
 
+pub fn request_with_form_async(String, HttpMethod, @http.FormData?, @dom.Element?, @core.Any) -> Unit
+
 pub async fn request_with_form_safe(String, HttpMethod, @http.FormData?, @dom.Element?) -> String? noraise
+
+pub fn request_with_form_sync(String, HttpMethod, @http.FormData?, @dom.Element?) -> String?
+
+pub fn show_indicators(Array[@dom.Element]) -> Unit
 
 pub fn start_htmx_observer(@observer.MutationObserver) -> Unit
 
 pub fn swap(@dom.Element, String, SwapStyle) -> Unit
+
+pub fn validate_element(@dom.Element) -> Bool
+
+pub fn validate_element_with_trigger(@dom.Element, @dom.Element?) -> Bool
 
 pub fn values_to_query_string(Array[(String, String)]) -> String
 

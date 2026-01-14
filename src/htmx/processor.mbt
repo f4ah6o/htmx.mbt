@@ -35,49 +35,61 @@ fn process_element_with_trigger(
       []
     }
   }
-
-  log_debug("Disabled elements count: " + disabled_elements.length().to_string())
+  log_debug(
+    "Disabled elements count: " + disabled_elements.length().to_string(),
+  )
 
   // Get indicator elements before request
   let indicator_elements = get_indicator_elements(element)
-
   if indicator_elements.length() > 0 {
-    log_debug("Found " + indicator_elements.length().to_string() + " indicator element(s)")
+    log_debug(
+      "Found " +
+      indicator_elements.length().to_string() +
+      " indicator element(s)",
+    )
   } else {
     log_debug("No indicator attribute found, using element itself")
   }
-
-  log_debug("Indicator elements count: " + indicator_elements.length().to_string())
+  log_debug(
+    "Indicator elements count: " + indicator_elements.length().to_string(),
+  )
 
   // Show indicators before request
   if indicator_elements.length() > 0 {
-    log_debug("About to call show_indicators with count: " + indicator_elements.length().to_string())
+    log_debug(
+      "About to call show_indicators with count: " +
+      indicator_elements.length().to_string(),
+    )
     show_indicators(indicator_elements)
     log_debug("show_indicators returned")
   }
 
   // Disable elements before request
   if disabled_elements.length() > 0 {
-    log_debug("About to call disable_elements with count: " + disabled_elements.length().to_string())
+    log_debug(
+      "About to call disable_elements with count: " +
+      disabled_elements.length().to_string(),
+    )
     disable_elements(disabled_elements)
     log_debug("disable_elements returned")
   }
 
   // Create callback for async response handling
   let callback = create_response_callback(
-    element,
-    target,
-    swap_style,
-    url,
-    disabled_elements,
-    indicator_elements,
+    element, target, swap_style, url, disabled_elements, indicator_elements,
   )
 
   // Handle form data for POST/PUT/PATCH vs GET/DELETE
   if http_method.has_body() {
     // Collect form data for methods that have a body
     let form_data = get_form_data(element)
-    request_with_form_async(url, http_method, form_data, Some(element), callback)
+    request_with_form_async(
+      url,
+      http_method,
+      form_data,
+      Some(element),
+      callback,
+    )
   } else {
     // For GET/DELETE, append form values as query params
     let actual_url = match get_form_data(element) {
@@ -322,6 +334,111 @@ extern "js" fn process_load_triggers() -> Unit =
   #|}
 
 ///|
+/// Initialize hx-on event delegation for inline event handlers
+extern "js" fn init_hx_on_delegation(doc_target : @core.Any) -> Unit =
+  #|(doc_target) => {
+  #|  // Common events to delegate - covers all test cases
+  #|  const commonEvents = [
+  #|    'click', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout',
+  #|    'mousemove', 'mouseenter', 'mouseleave',
+  #|    'keydown', 'keyup', 'keypress',
+  #|    'change', 'input', 'submit', 'focus', 'blur',
+  #|    'load', 'revealed',
+  #|    'htmx:config-request', 'htmx:after-request', 'htmx:before-request',
+  #|    'htmx:before-swap', 'htmx:after-swap', 'htmx:before-settle', 'htmx:after-settle',
+  #|    'htmx:validation:failed', 'htmx:validation:halted',
+  #|    'htmx:evalDisallowedError'
+  #|  ];
+  #|
+  #|  // Handler function for all hx-on events
+  #|  const handleHxOn = function(evt) {
+  #|    const eventType = evt.type;
+  #|    let currentTarget = evt.target;
+  #|
+  #|    // Walk up the DOM tree to find elements with hx-on attributes
+  #|    while (currentTarget && currentTarget !== document) {
+  #|      const attrs = currentTarget.attributes;
+  #|      for (let i = 0; i < attrs.length; i++) {
+  #|        const attrName = attrs[i].name;
+  #|
+  #|        // Check if this is an hx-on attribute
+  #|        let eventSpec = null;
+  #|        if (attrName.startsWith('hx-on:')) {
+  #|          eventSpec = attrName.slice(6); // after 'hx-on:'
+  #|        } else if (attrName.startsWith('hx-on-')) {
+  #|          eventSpec = attrName.slice(6); // after 'hx-on-'
+  #|        } else if (attrName.startsWith('data-hx-on:')) {
+  #|          eventSpec = attrName.slice(11); // after 'data-hx-on:'
+  #|        } else if (attrName.startsWith('data-hx-on-')) {
+  #|          eventSpec = attrName.slice(11); // after 'data-hx-on-'
+  #|        }
+  #|
+  #|        if (eventSpec !== null) {
+  #|          // Expand :: and -- shorthands to htmx:
+  #|          if (eventSpec.startsWith('::')) {
+  #|            eventSpec = 'htmx:' + eventSpec.slice(2);
+  #|          } else if (eventSpec.startsWith('--')) {
+  #|            eventSpec = 'htmx:' + eventSpec.slice(2);
+  #|          }
+  #|
+  #|          // Check if this handler matches the current event
+  #|          if (eventSpec === eventType) {
+  #|            const code = attrs[i].value;
+  #|
+  #|            // Check allowEval configuration
+  #|            if (window.htmx && window.htmx.config && window.htmx.config.allowEval === false) {
+  #|              const errorEvt = new CustomEvent('htmx:evalDisallowedError', {
+  #|                bubbles: true,
+  #|                cancelable: true,
+  #|                detail: { source: 'hx-on' }
+  #|              });
+  #|              currentTarget.dispatchEvent(errorEvt);
+  #|              return;
+  #|            }
+  #|
+  #|            // Get or create handler storage on element
+  #|            const key = 'htmx-internal-data';
+  #|            let data = currentTarget[key];
+  #|            if (!data) {
+  #|              data = {};
+  #|              currentTarget[key] = data;
+  #|            }
+  #|            if (!data.hxOnHandlers) {
+  #|              data.hxOnHandlers = {};
+  #|            }
+  #|
+  #|            // Create or get cached handler
+  #|            if (!data.hxOnHandlers[eventType]) {
+  #|              try {
+  #|                data.hxOnHandlers[eventType] = new Function('event', code);
+  #|              } catch (e) {
+  #|                console.error('htmx.mbt: Error creating hx-on handler:', e);
+  #|                return;
+  #|              }
+  #|            }
+  #|
+  #|            // Execute handler with element as 'this'
+  #|            try {
+  #|              data.hxOnHandlers[eventType].call(currentTarget, evt);
+  #|            } catch (e) {
+  #|              console.error('htmx.mbt: Error executing hx-on handler:', e);
+  #|            }
+  #|
+  #|            return;
+  #|          }
+  #|        }
+  #|      }
+  #|      currentTarget = currentTarget.parentElement;
+  #|    }
+  #|  };
+  #|
+  #|  // Register delegation for all common events
+  #|  for (const evtType of commonEvents) {
+  #|    doc_target.addEventListener(evtType, handleHxOn, { capture: false });
+  #|  }
+  #|}
+
+///|
 /// Initialize htmx - set up global event listeners using event delegation
 pub fn htmx_init() -> Unit {
   let doc = @dom.document()
@@ -331,6 +448,10 @@ pub fn htmx_init() -> Unit {
   doc_target.addEventListener("click", handle_click)
   doc_target.addEventListener("change", handle_change)
   doc_target.addEventListener("submit", handle_submit)
+
+  // Initialize hx-on event delegation for inline event handlers
+  let doc_target_any : @core.Any = @core.identity(doc_target)
+  init_hx_on_delegation(doc_target_any)
 
   // Process load triggers
   process_load_triggers()

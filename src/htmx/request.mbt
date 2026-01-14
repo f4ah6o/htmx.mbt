@@ -246,7 +246,13 @@ pub fn request_async(
 ) -> Unit {
   let headers = get_htmx_headers(trigger_element)
   let headers_obj = map_to_js_object(headers)
-  request_async_callback(url, http_method.to_string(), trigger_element, headers_obj, callback)
+  request_async_callback(
+    url,
+    http_method.to_string(),
+    trigger_element,
+    headers_obj,
+    callback,
+  )
 }
 
 ///|
@@ -261,8 +267,23 @@ pub fn request_with_form_async(
   let headers = get_htmx_headers(trigger_element)
   let headers_obj = map_to_js_object(headers)
   match form_data {
-    Some(fd) => request_with_form_async_callback(url, http_method.to_string(), fd.as_any(), trigger_element, headers_obj, callback)
-    None => request_async_callback(url, http_method.to_string(), trigger_element, headers_obj, callback)
+    Some(fd) =>
+      request_with_form_async_callback(
+        url,
+        http_method.to_string(),
+        fd.as_any(),
+        trigger_element,
+        headers_obj,
+        callback,
+      )
+    None =>
+      request_async_callback(
+        url,
+        http_method.to_string(),
+        trigger_element,
+        headers_obj,
+        callback,
+      )
   }
 }
 

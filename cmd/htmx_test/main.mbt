@@ -474,6 +474,8 @@ fn make_htmx_object() -> @core.Any {
   let config_obj = @core.new_object()
   let cache_obj = @core.new_object()
   htmx_obj._set("version", @core.any("0.1.0-mbt"))
+  // Set allowEval to true by default for hx-on functionality
+  config_obj._set("allowEval", @core.any(true))
   htmx_obj._set("config", config_obj)
   htmx_obj._set("cache", cache_obj)
   htmx_obj._set("location", window_location())

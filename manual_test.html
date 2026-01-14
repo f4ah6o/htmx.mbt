@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>hx-on Manual Test</title>
+  <meta name="htmx-config" content='{"historyEnabled":false,"defaultSettleDelay":0}'>
+  <script src="node_modules/chai/chai.js"></script>
+  <script src="node_modules/sinon/pkg/sinon.js"></script>
+  <script src="target/js/release/build/cmd/htmx_test/htmx_test.js"></script>
+  <style>
+    body { padding: 20px; font-family: sans-serif; }
+    .test-section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+    button { padding: 10px; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>hx-on Manual Test</h1>
+
+  <div class="test-section">
+    <h2>Test 1: Basic click event</h2>
+    <button id="btn1" hx-on:click="window.test1 = true">Test 1 Button</button>
+    <p>Result: <span id="result1">-</span></p>
+  </div>
+
+  <div class="test-section">
+    <h2>Test 2: Dash format</h2>
+    <button id="btn2" hx-on-click="window.test2 = true">Test 2 Button</button>
+    <p>Result: <span id="result2">-</span></p>
+  </div>
+
+  <div class="test-section">
+    <h2>Console Log</h2>
+    <pre id="console-log"></pre>
+  </div>
+
+  <script>
+    // Capture console.log
+    const originalLog = console.log;
+    const logOutput = document.getElementById('console-log');
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      logOutput.textContent += args.join(' ') + '\n';
+    };
+
+    // Check htmx initialization
+    console.log('=== Manual Test Start ===');
+    console.log('htmx loaded:', typeof window.htmx);
+    console.log('htmx.config:', window.htmx?.config);
+    console.log('allowEval:', window.htmx?.config?.allowEval);
+
+    // Auto-click buttons after a delay
+    setTimeout(() => {
+      console.log('=== Clicking btn1 ===');
+      document.getElementById('btn1').click();
+      document.getElementById('result1').textContent = 'window.test1 = ' + window.test1;
+      console.log('Test 1 result:', window.test1);
+
+      setTimeout(() => {
+        console.log('=== Clicking btn2 ===');
+        document.getElementById('btn2').click();
+        document.getElementById('result2').textContent = 'window.test2 = ' + window.test2;
+        console.log('Test 2 result:', window.test2);
+      }, 100);
+    }, 100);
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>hx-on test</title>
+  <script src="target/js/release/build/cmd/htmx_test/htmx_test.js"></script>
+</head>
+<body>
+  <h1>hx-on Test</h1>
+  <button id="btn1" hx-on:click="window.foo = true">Test Button</button>
+  <div id="result">Click the button</div>
+
+  <script>
+    // Check if htmx is loaded
+    console.log('htmx loaded:', typeof window.htmx);
+    console.log('htmx.config:', window.htmx?.config);
+
+    // Add click listener to button to check result
+    document.getElementById('btn1').addEventListener('click', function() {
+      console.log('Button clicked, window.foo =', window.foo);
+      document.getElementById('result').textContent = 'window.foo = ' + window.foo;
+    });
+  </script>
+</body>
+</html>

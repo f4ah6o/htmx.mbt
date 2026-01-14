@@ -69,12 +69,11 @@ pub fn get_target(element : @dom.Element) -> @dom.Element {
     Option::None => element.getAttribute(with_data_prefix(target_attr))
   }
   match result {
-    Some(selector) => {
+    Some(selector) =>
       match parse_extended_target(element, selector) {
         Some(target) => target
         None => element
       }
-    }
     None => element
   }
 }
@@ -140,7 +139,10 @@ fn parse_extended_target(
 
 ///|
 /// Find the next sibling element, optionally matching a selector (returns None if not found)
-fn find_next_sibling_opt(element : @dom.Element, selector : String) -> @dom.Element? {
+fn find_next_sibling_opt(
+  element : @dom.Element,
+  selector : String,
+) -> @dom.Element? {
   match get_next_sibling(element) {
     Some(next) =>
       if selector == "" || element_matches(next, selector) {
@@ -306,7 +308,10 @@ extern "js" fn split_by_comma(s : String) -> Array[String] =
 
 ///|
 /// Find multiple elements by comma-separated selector
-pub fn find_targets_by_selector(element : @dom.Element, selector : String) -> Array[@dom.Element] {
+pub fn find_targets_by_selector(
+  element : @dom.Element,
+  selector : String,
+) -> Array[@dom.Element] {
   let parts = split_by_comma(selector)
   let results : Array[@dom.Element] = []
   for part in parts {
@@ -330,12 +335,11 @@ extern "js" fn log_debug_attr(msg : String) -> Unit =
 pub fn get_disabled_elt(element : @dom.Element) -> String? {
   match element.getAttribute("hx-disabled-elt") {
     Some(value) => Some(value)
-    Option::None => {
+    Option::None =>
       match element.getAttribute("data-hx-disabled-elt") {
         Some(value) => Some(value)
         Option::None => Option::None
       }
-    }
   }
 }
 
@@ -344,12 +348,11 @@ pub fn get_disabled_elt(element : @dom.Element) -> String? {
 pub fn get_indicator(element : @dom.Element) -> String? {
   match element.getAttribute("hx-indicator") {
     Some(value) => Some(value)
-    Option::None => {
+    Option::None =>
       match element.getAttribute("data-hx-indicator") {
         Some(value) => Some(value)
         Option::None => Option::None
       }
-    }
   }
 }
 
@@ -366,9 +369,17 @@ fn resolve_inherit(element : @dom.Element, selector : String) -> String {
   let parts = split_by_comma(selector)
   let results : Array[String] = []
   for part in parts {
-    log_debug_attr("resolve_inherit: part = '" + part + "', trim = '" + trim_string(part) + "'")
+    log_debug_attr(
+      "resolve_inherit: part = '" +
+      part +
+      "', trim = '" +
+      trim_string(part) +
+      "'",
+    )
     if part == "inherit" {
-      log_debug_attr("resolve_inherit: part is inherit, calling resolve_inherit_from_parent")
+      log_debug_attr(
+        "resolve_inherit: part is inherit, calling resolve_inherit_from_parent",
+      )
       // Walk up parent chain to find hx-indicator
       match resolve_inherit_from_parent(element) {
         Some(inherited) => {
@@ -381,9 +392,7 @@ fn resolve_inherit(element : @dom.Element, selector : String) -> String {
             }
           }
         }
-        Option::None => {
-          log_debug_attr("resolve_inherit: inherited is None")
-        }
+        Option::None => log_debug_attr("resolve_inherit: inherited is None")
       }
     } else if part != "" {
       results.push(part)
@@ -405,15 +414,20 @@ fn resolve_inherit_from_parent(element : @dom.Element) -> String? {
       // Use closest to find parent with hx-indicator (including parent itself)
       match parent.closest("[hx-indicator], [data-hx-indicator]") {
         Some(indicator_owner) => {
-          log_debug_attr("resolve_inherit_from_parent: closest found indicator_owner")
+          log_debug_attr(
+            "resolve_inherit_from_parent: closest found indicator_owner",
+          )
           match get_indicator(indicator_owner) {
             Some(selector) => {
-              log_debug_attr("resolve_inherit_from_parent: selector = '" + selector + "'")
+              log_debug_attr(
+                "resolve_inherit_from_parent: selector = '" + selector + "'",
+              )
               // Check if selector also has inherit
               if selector.contains("inherit") {
                 // Recursively resolve inherit from indicator owner's parent
                 match resolve_inherit_from_parent(indicator_owner) {
-                  Some(inherited) => Some(combine_selectors(inherited, selector))
+                  Some(inherited) =>
+                    Some(combine_selectors(inherited, selector))
                   None => Some(extract_non_inherit(selector))
                 }
               } else {
@@ -424,7 +438,9 @@ fn resolve_inherit_from_parent(element : @dom.Element) -> String? {
           }
         }
         None => {
-          log_debug_attr("resolve_inherit_from_parent: closest not found, trying grandparent")
+          log_debug_attr(
+            "resolve_inherit_from_parent: closest not found, trying grandparent",
+          )
           // No indicator found in parent's ancestry, try grandparent
           resolve_inherit_from_parent(parent)
         }
@@ -482,13 +498,12 @@ extern "js" fn join_with_comma(arr : Array[String]) -> String =
 pub fn get_indicator_with_inherit(element : @dom.Element) -> String? {
   match get_indicator(element) {
     Some(selector) => Some(resolve_inherit(element, selector))
-    None => {
+    None =>
       // Element doesn't have hx-indicator, try parent
       match get_parent_element(element) {
         Some(parent) => get_indicator_with_inherit(parent)
         None => None
       }
-    }
   }
 }
 
@@ -500,20 +515,18 @@ fn find_indicator_owner(element : @dom.Element) -> (@dom.Element, String)? {
   // First check if element itself has hx-indicator
   match get_indicator(element) {
     Some(selector) => Some((element, selector))
-    None => {
+    None =>
       // Use closest to find ancestor with hx-indicator
       // This searches element itself and all ancestors
       match element.closest("[hx-indicator], [data-hx-indicator]") {
-        Some(owner) => {
+        Some(owner) =>
           // Get the indicator value from the owner
           match get_indicator(owner) {
             Some(selector) => Some((owner, selector))
             None => None
           }
-        }
         None => None
       }
-    }
   }
 }
 
@@ -523,13 +536,21 @@ fn find_indicator_owner(element : @dom.Element) -> (@dom.Element, String)? {
 pub fn get_indicator_elements(element : @dom.Element) -> Array[@dom.Element] {
   match find_indicator_owner(element) {
     Some((owner, selector)) => {
-      log_debug_attr("get_indicator_elements: found owner with selector '" + selector + "'")
+      log_debug_attr(
+        "get_indicator_elements: found owner with selector '" + selector + "'",
+      )
       // Resolve inherit in selector
       let resolved = resolve_inherit(owner, selector)
-      log_debug_attr("get_indicator_elements: resolved selector '" + resolved + "'")
+      log_debug_attr(
+        "get_indicator_elements: resolved selector '" + resolved + "'",
+      )
       // Find targets relative to the owner of hx-indicator
       let result = find_targets_by_selector(owner, resolved)
-      log_debug_attr("get_indicator_elements: found " + result.length().to_string() + " targets")
+      log_debug_attr(
+        "get_indicator_elements: found " +
+        result.length().to_string() +
+        " targets",
+      )
       // If no targets found, fall back to element itself
       if result.length() == 0 {
         [element]
@@ -538,7 +559,9 @@ pub fn get_indicator_elements(element : @dom.Element) -> Array[@dom.Element] {
       }
     }
     None => {
-      log_debug_attr("get_indicator_elements: no indicator found, using element itself")
+      log_debug_attr(
+        "get_indicator_elements: no indicator found, using element itself",
+      )
       [element]
     }
   }

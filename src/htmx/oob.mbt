@@ -115,10 +115,9 @@ pub fn execute_oob_swap(
       let content = get_outer_html(new_el)
       insert_adjacent(target_el, "afterend", content)
     }
-    Morph => {
+    Morph =>
       // Direct element-to-element morphing
       morph_element(target_el, new_el)
-    }
   }
 }
 
