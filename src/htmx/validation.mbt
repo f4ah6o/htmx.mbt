@@ -24,40 +24,24 @@ extern "js" fn has_hx_validate(el : @dom.Element) -> Bool =
   #|(el) => el.hasAttribute('hx-validate') || el.hasAttribute('data-hx-validate')
 
 ///|
-/// Get all form input elements (input, select, textarea)
-extern "js" fn get_form_inputs(form : @dom.Element) -> Array[@dom.Element] =
+/// Dispatch htmx:validation:validate event on each input element in form
+extern "js" fn dispatch_validate_events(form : @dom.Element) -> Unit =
   #|(form) => {
-  #|  if (!form.querySelectorAll) return [];
-  #|  return Array.from(form.querySelectorAll('input, select, textarea'));
+  #|  // Get all form inputs and dispatch validation:validate event on each
+  #|  const inputs = form.querySelectorAll('input, select, textarea');
+  #|  for (let i = 0; i < inputs.length; i++) {
+  #|    const evt = new CustomEvent('htmx:validation:validate', { bubbles: true, cancelable: true });
+  #|    inputs[i].dispatchEvent(evt);
+  #|  }
   #|}
 
 ///|
-/// Dispatch htmx:validation:validate event on an element
+/// Dispatch htmx:validation:validate event on a single element
 extern "js" fn dispatch_validate_event(el : @dom.Element) -> Unit =
   #|(el) => {
   #|  const evt = new CustomEvent('htmx:validation:validate', { bubbles: true, cancelable: true });
   #|  el.dispatchEvent(evt);
   #|}
-
-///|
-/// Dispatch htmx:validation:failed event on an invalid element with error detail
-extern "js" fn dispatch_validation_failed_event(
-  target : @dom.Element,
-  detail : @core.Any,
-) -> Bool =
-  #|(target, detail) => {
-  #|  const evt = new CustomEvent('htmx:validation:failed', {
-  #|    bubbles: true,
-  #|    cancelable: true,
-  #|    detail: detail
-  #|  });
-  #|  return target.dispatchEvent(evt);
-  #|}
-
-///|
-/// Get validation message from an element
-extern "js" fn get_validation_message(el : @dom.Element) -> String =
-  #|(el) => el.validationMessage || ''
 
 ///|
 /// Get invalid elements from form after validate events have been dispatched
@@ -72,6 +56,50 @@ extern "js" fn get_invalid_elements(form : @dom.Element) -> Array[@dom.Element] 
   #|    }
   #|  }
   #|  return invalids;
+  #|}
+
+///|
+/// Get validation message from an element
+extern "js" fn get_validation_message(el : @dom.Element) -> String =
+  #|(el) => el.validationMessage || ''
+
+///|
+/// Dispatch htmx:validation:failed event on an invalid element
+extern "js" fn dispatch_validation_failed_event(
+  target : @dom.Element,
+  detail : @core.Any,
+) -> Bool =
+  #|(target, detail) => {
+  #|  const evt = new CustomEvent('htmx:validation:failed', {
+  #|    bubbles: true,
+  #|    cancelable: true,
+  #|    detail: detail
+  #|  });
+  #|  return target.dispatchEvent(evt);
+  #|}
+
+///|
+/// Dispatch htmx:validation:failed event on form with errors array
+extern "js" fn dispatch_validation_failed_on_form(form : @dom.Element, errors : @core.Any) -> Bool =
+  #|(form, errors) => {
+  #|  const evt = new CustomEvent('htmx:validation:failed', {
+  #|    bubbles: true,
+  #|    cancelable: true,
+  #|    detail: { errors: errors }
+  #|  });
+  #|  return form.dispatchEvent(evt);
+  #|}
+
+///|
+/// Dispatch htmx:validation:halted event on form with errors array
+extern "js" fn dispatch_validation_halted(form : @dom.Element, errors : @core.Any) -> Unit =
+  #|(form, errors) => {
+  #|  const evt = new CustomEvent('htmx:validation:halted', {
+  #|    bubbles: true,
+  #|    cancelable: true,
+  #|    detail: { errors: errors }
+  #|  });
+  #|  form.dispatchEvent(evt);
   #|}
 
 ///|
@@ -120,7 +148,7 @@ pub fn validate_element(element : @dom.Element) -> Bool {
   // For non-form elements with hx-validate, check the element itself
   if tag != "form" && has_hx_validate(element) {
     // Dispatch validation:validate event first
-    // dispatch_validate_event(element)
+    dispatch_validate_event(element)
     // Then check validity
     if not(element_check_validity(element)) {
       // Dispatch validation:failed event on the element
@@ -141,11 +169,7 @@ pub fn validate_element(element : @dom.Element) -> Bool {
 
     // Step 1: Dispatch htmx:validation:validate event for each input
     // This allows scripts (like hyperscript) to modify validity via setCustomValidity
-    // TODO: Fix the hang caused by this event dispatch
-    // let inputs = get_form_inputs(element)
-    // for input in inputs {
-    //   dispatch_validate_event(input)
-    // }
+    dispatch_validate_events(element)
 
     // Step 2: Check which inputs are now invalid
     let invalids = get_invalid_elements(element)
@@ -153,22 +177,8 @@ pub fn validate_element(element : @dom.Element) -> Bool {
       // Create errors array for htmx:validation:halted
       let errors = create_errors_array(invalids)
 
-      // Step 3: Dispatch htmx:validation:failed on each invalid element
-      // TODO: Fix the hang caused by this event dispatch
-      // for invalid_el in invalids {
-      //   let detail = @core.new_object()
-      //   detail._set("elt", invalid_el.as_any())
-      //   detail._set("message", @core.any(get_validation_message(invalid_el)))
-      //   detail._set("validity", get_element_validity(invalid_el))
-      //   let _ = dispatch_validation_failed_event(invalid_el, detail)
-      // }
-
-      // Step 4: Dispatch htmx:validation:halted on the form with errors array
-      let halt_detail = @core.new_object()
-      halt_detail._set("errors", errors)
-      let _ = dispatch_validation_event(
-        element, "htmx:validation:halted", halt_detail,
-      )
+      // Step 3: Dispatch htmx:validation:halted on the form with errors array
+      dispatch_validation_halted(element, errors)
 
       // Report validity if configured
       if get_config_report_validity() {
