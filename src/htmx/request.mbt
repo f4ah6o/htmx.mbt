@@ -150,6 +150,123 @@ pub fn request_with_form_sync(
 }
 
 ///|
+/// Perform async XHR request with callback (for proper disabled-elt behavior)
+/// The callback receives a String? (the response text or null on error)
+extern "js" fn request_async_callback(
+  url : String,
+  method_str : String,
+  trigger_element : @dom.Element?,
+  headers_map : @core.Any,
+  callback : @core.Any,
+) -> Unit =
+  #|(url, method_str, trigger_element, headers_map, callback) => {
+  #|  const xhr = new XMLHttpRequest();
+  #|  xhr.open(method_str, url, true);
+  #|
+  #|  // Set headers from map
+  #|  const headers = headers_map;
+  #|  for (const [key, value] of Object.entries(headers)) {
+  #|    xhr.setRequestHeader(key, value);
+  #|  }
+  #|
+  #|  xhr.onload = function() {
+  #|    if (xhr.status >= 200 && xhr.status < 300) {
+  #|      callback(xhr.responseText || '');
+  #|    } else {
+  #|      callback(null);
+  #|    }
+  #|  };
+  #|
+  #|  xhr.onerror = function() {
+  #|    callback(null);
+  #|  };
+  #|
+  #|  xhr.send();
+  #|}
+
+///|
+/// Perform async XHR request with FormData body and callback
+extern "js" fn request_with_form_async_callback(
+  url : String,
+  method_str : String,
+  form_data_any : @core.Any,
+  trigger_element : @dom.Element?,
+  headers_map : @core.Any,
+  callback : @core.Any,
+) -> Unit =
+  #|(url, method_str, form_data_any, trigger_element, headers_map, callback) => {
+  #|  const xhr = new XMLHttpRequest();
+  #|  xhr.open(method_str, url, true);
+  #|
+  #|  // Set headers from map
+  #|  const headers = headers_map;
+  #|  for (const [key, value] of Object.entries(headers)) {
+  #|    xhr.setRequestHeader(key, value);
+  #|  }
+  #|
+  #|  xhr.onload = function() {
+  #|    if (xhr.status >= 200 && xhr.status < 300) {
+  #|      callback(xhr.responseText || '');
+  #|    } else {
+  #|      callback(null);
+  #|    }
+  #|  };
+  #|
+  #|  xhr.onerror = function() {
+  #|    callback(null);
+  #|  };
+  #|
+  #|  xhr.send(form_data_any);
+  #|}
+
+///|
+/// Convert headers Map to JavaScript object for passing to extern functions
+extern "js" fn map_to_js_object(m : Map[String, String]) -> @core.Any =
+  #|(m) => {
+  #|  const obj = {};
+  #|  // MoonBit Map has { buf: [{_0: key, _1: value}, ...], start, end } structure
+  #|  if (m && m.buf) {
+  #|    for (let i = m.start || 0; i < (m.end || m.buf.length); i++) {
+  #|      const entry = m.buf[i];
+  #|      if (entry && entry._0 !== undefined) {
+  #|        obj[entry._0] = entry._1;
+  #|      }
+  #|    }
+  #|  }
+  #|  return obj;
+  #|}
+
+///|
+/// Async request without body using callback
+pub fn request_async(
+  url : String,
+  http_method : HttpMethod,
+  trigger_element : @dom.Element?,
+  callback : @core.Any,
+) -> Unit {
+  let headers = get_htmx_headers(trigger_element)
+  let headers_obj = map_to_js_object(headers)
+  request_async_callback(url, http_method.to_string(), trigger_element, headers_obj, callback)
+}
+
+///|
+/// Async request with FormData body using callback
+pub fn request_with_form_async(
+  url : String,
+  http_method : HttpMethod,
+  form_data : @http.FormData?,
+  trigger_element : @dom.Element?,
+  callback : @core.Any,
+) -> Unit {
+  let headers = get_htmx_headers(trigger_element)
+  let headers_obj = map_to_js_object(headers)
+  match form_data {
+    Some(fd) => request_with_form_async_callback(url, http_method.to_string(), fd.as_any(), trigger_element, headers_obj, callback)
+    None => request_async_callback(url, http_method.to_string(), trigger_element, headers_obj, callback)
+  }
+}
+
+///|
 /// Perform HTTP request with optional FormData body (async version)
 pub async fn request_with_form(
   url : String,

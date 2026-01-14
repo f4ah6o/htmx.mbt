@@ -69,8 +69,13 @@ pub fn get_target(element : @dom.Element) -> @dom.Element {
     Option::None => element.getAttribute(with_data_prefix(target_attr))
   }
   match result {
-    Some(selector) => parse_extended_target(element, selector)
-    Option::None => element
+    Some(selector) => {
+      match parse_extended_target(element, selector) {
+        Some(target) => target
+        None => element
+      }
+    }
+    None => element
   }
 }
 
@@ -96,104 +101,95 @@ extern "js" fn trim_string(s : String) -> String =
   #|(s) => { return s.trim(); }
 
 ///|
-/// Parse extended target selector and return the target element
+/// Parse extended target selector and return the target element (or None if not found)
 fn parse_extended_target(
   element : @dom.Element,
   selector : String,
-) -> @dom.Element {
+) -> @dom.Element? {
   if selector == "this" {
-    element
+    Some(element)
   } else if selector.has_prefix("closest ") {
     let css = substring_after(selector, 8)
-    match element.closest(css) {
-      Some(target) => target
-      Option::None => element
-    }
+    element.closest(css)
   } else if selector.has_prefix("find ") {
     let css = substring_after(selector, 5)
-    match element.querySelector(css) {
-      Some(target) => target
-      Option::None => element
-    }
+    element.querySelector(css)
   } else if selector.has_prefix("next") {
     let rest = trim_string(substring_after(selector, 4))
-    find_next_sibling(element, rest)
+    find_next_sibling_opt(element, rest)
   } else if selector.has_prefix("previous") {
     let rest = trim_string(substring_after(selector, 8))
-    find_previous_sibling(element, rest)
+    find_previous_sibling_opt(element, rest)
   } else {
     // Default CSS selector query on document
-    match @dom.document().querySelector(selector) {
-      Some(target) => target
-      Option::None => element
-    }
+    @dom.document().querySelector(selector)
   }
 }
 
 ///|
-/// Find the next sibling element, optionally matching a selector
-fn find_next_sibling(element : @dom.Element, selector : String) -> @dom.Element {
+/// Find the next sibling element, optionally matching a selector (returns None if not found)
+fn find_next_sibling_opt(element : @dom.Element, selector : String) -> @dom.Element? {
   match get_next_sibling(element) {
     Some(next) =>
       if selector == "" || element_matches(next, selector) {
-        next
+        Some(next)
       } else {
         // Try next siblings until we find a match or run out
-        find_next_matching(next, selector)
+        find_next_matching_opt(next, selector)
       }
-    Option::None => element
+    Option::None => Option::None
   }
 }
 
 ///|
-/// Recursively find next matching sibling
-fn find_next_matching(
+/// Recursively find next matching sibling (returns None if not found)
+fn find_next_matching_opt(
   element : @dom.Element,
   selector : String,
-) -> @dom.Element {
+) -> @dom.Element? {
   match get_next_sibling(element) {
     Some(next) =>
       if selector == "" || element_matches(next, selector) {
-        next
+        Some(next)
       } else {
-        find_next_matching(next, selector)
+        find_next_matching_opt(next, selector)
       }
-    Option::None => element
+    Option::None => Option::None
   }
 }
 
 ///|
-/// Find the previous sibling element, optionally matching a selector
-fn find_previous_sibling(
+/// Find the previous sibling element, optionally matching a selector (returns None if not found)
+fn find_previous_sibling_opt(
   element : @dom.Element,
   selector : String,
-) -> @dom.Element {
+) -> @dom.Element? {
   match get_previous_sibling(element) {
     Some(prev) =>
       if selector == "" || element_matches(prev, selector) {
-        prev
+        Some(prev)
       } else {
         // Try previous siblings until we find a match or run out
-        find_previous_matching(prev, selector)
+        find_previous_matching_opt(prev, selector)
       }
-    Option::None => element
+    Option::None => Option::None
   }
 }
 
 ///|
-/// Recursively find previous matching sibling
-fn find_previous_matching(
+/// Recursively find previous matching sibling (returns None if not found)
+fn find_previous_matching_opt(
   element : @dom.Element,
   selector : String,
-) -> @dom.Element {
+) -> @dom.Element? {
   match get_previous_sibling(element) {
     Some(prev) =>
       if selector == "" || element_matches(prev, selector) {
-        prev
+        Some(prev)
       } else {
-        find_previous_matching(prev, selector)
+        find_previous_matching_opt(prev, selector)
       }
-    Option::None => element
+    Option::None => Option::None
   }
 }
 
@@ -286,5 +282,42 @@ pub fn get_push_url(element : @dom.Element) -> String? {
   match element.getAttribute("hx-push-url") {
     Some(value) => Some(value)
     Option::None => element.getAttribute("data-hx-push-url")
+  }
+}
+
+///|
+/// Split string by comma and trim each part
+extern "js" fn split_by_comma(s : String) -> Array[String] =
+  #|(s) => {
+  #|  return s.split(',').map(str => str.trim());
+  #|}
+
+///|
+/// Find multiple elements by comma-separated selector
+pub fn find_targets_by_selector(element : @dom.Element, selector : String) -> Array[@dom.Element] {
+  let parts = split_by_comma(selector)
+  let results : Array[@dom.Element] = []
+  for part in parts {
+    if part != "" {
+      match parse_extended_target(element, part) {
+        Some(target) => results.push(target)
+        None => ()
+      }
+    }
+  }
+  results
+}
+
+///|
+/// Get the hx-disabled-elt value (checks both hx-disabled-elt and data-hx-disabled-elt)
+pub fn get_disabled_elt(element : @dom.Element) -> String? {
+  match element.getAttribute("hx-disabled-elt") {
+    Some(value) => Some(value)
+    Option::None => {
+      match element.getAttribute("data-hx-disabled-elt") {
+        Some(value) => Some(value)
+        Option::None => Option::None
+      }
+    }
   }
 }

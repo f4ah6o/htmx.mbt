@@ -1,9 +1,16 @@
 ///|
-/// Process a single htmx element - perform request and swap (synchronous for Sinon compatibility)
+/// Debug log for processor
+extern "js" fn log_debug(msg : String) -> Unit =
+  #|(msg) => console.log("[htmx.mbt DEBUG] " + msg)
+
+///|
+/// Process a single htmx element - perform request and swap (async for proper disabled-elt behavior)
 fn process_element_with_trigger(
   element : @dom.Element,
   trigger_el : @dom.Element?,
 ) -> Unit {
+  log_debug("process_element_with_trigger called")
+
   // Find method and URL
   let method_url = find_method_url(element)
   guard method_url is Some((http_method, url)) else { return }
@@ -17,11 +24,41 @@ fn process_element_with_trigger(
   let target = get_target(element)
   let swap_style = get_swap_style(element)
 
-  // Handle form data for POST/PUT/PATCH
-  let response = if http_method.has_body() {
+  // Get disabled elements before request
+  let disabled_elements = match get_disabled_elt(element) {
+    Some(selector) => {
+      log_debug("Found disabled-elt selector: " + selector)
+      find_targets_by_selector(element, selector)
+    }
+    None => {
+      log_debug("No disabled-elt attribute found")
+      []
+    }
+  }
+
+  log_debug("Disabled elements count: " + disabled_elements.length().to_string())
+
+  // Disable elements before request
+  if disabled_elements.length() > 0 {
+    log_debug("About to call disable_elements with count: " + disabled_elements.length().to_string())
+    disable_elements(disabled_elements)
+    log_debug("disable_elements returned")
+  }
+
+  // Create callback for async response handling
+  let callback = create_response_callback(
+    element,
+    target,
+    swap_style,
+    url,
+    disabled_elements,
+  )
+
+  // Handle form data for POST/PUT/PATCH vs GET/DELETE
+  if http_method.has_body() {
     // Collect form data for methods that have a body
     let form_data = get_form_data(element)
-    request_with_form_sync(url, http_method, form_data, Some(element))
+    request_with_form_async(url, http_method, form_data, Some(element), callback)
   } else {
     // For GET/DELETE, append form values as query params
     let actual_url = match get_form_data(element) {
@@ -34,29 +71,63 @@ fn process_element_with_trigger(
       }
       None => url
     }
-    request_sync(actual_url, http_method, Some(element))
-  }
-
-  // Swap content if we got a response
-  match response {
-    Some(content) => {
-      let select_val = get_select(element)
-      let final_content = process_response(content, select_val)
-      swap(target, final_content, swap_style)
-
-      // Handle history API
-      match get_push_url(element) {
-        Some(push_val) =>
-          if push_val != "false" {
-            let dest_url = if push_val == "true" { url } else { push_val }
-            push_url(dest_url)
-          }
-        None => ()
-      }
-    }
-    None => ()
+    request_async(actual_url, http_method, Some(element), callback)
   }
 }
+
+///|
+/// Create a callback function for handling async XHR response
+extern "js" fn create_response_callback(
+  element : @dom.Element,
+  target : @dom.Element,
+  swap_style : SwapStyle,
+  url : String,
+  disabled_elements : Array[@dom.Element],
+) -> @core.Any =
+  #|(element, target, swap_style, url, disabled_elements) => {
+  #|  return function(responseText) {
+  #|    // Re-enable disabled elements after request
+  #|    if (disabled_elements.length > 0) {
+  #|      for (const el of disabled_elements) {
+  #|        const key = "htmx-internal-data";
+  #|        const data = el[key];
+  #|        if (data) {
+  #|          data.requestCount = (data.requestCount || 1) - 1;
+  #|        }
+  #|        const count = data ? (data.requestCount || 0) : 0;
+  #|        if (count === 0) {
+  #|          el.removeAttribute("disabled");
+  #|        }
+  #|      }
+  #|    }
+  #|
+  #|    // Swap content if we got a response
+  #|    if (responseText !== null) {
+  #|      const select_val = element.getAttribute("hx-select") || element.getAttribute("data-hx-select");
+  #|      let final_content = responseText;
+  #|      if (select_val) {
+  #|        const parser = new DOMParser();
+  #|        const doc = parser.parseFromString(responseText, 'text/html');
+  #|        const selected = doc.querySelector(select_val);
+  #|        if (selected) {
+  #|          final_content = selected.outerHTML;
+  #|        } else {
+  #|          final_content = "";
+  #|        }
+  #|      }
+  #|
+  #|      // Simple innerHTML swap
+  #|      target.innerHTML = final_content;
+  #|
+  #|      // Handle history API
+  #|      const push_val = element.getAttribute("hx-push-url") || element.getAttribute("data-hx-push-url");
+  #|      if (push_val && push_val !== "false") {
+  #|        const dest_url = push_val === "true" ? url : push_val;
+  #|        history.pushState(null, '', dest_url);
+  #|      }
+  #|    }
+  #|  };
+  #|}
 
 ///|
 /// Wrapper for process element (kept for API compatibility)
@@ -114,7 +185,7 @@ fn handle_click(evt : @core.Any) -> Unit {
   match find_htmx_element(target_el) {
     Some(htmx_el) => {
       let trigger = get_trigger_event(htmx_el)
-      if trigger == "click" {
+      if trigger == "click" || trigger == "load" {
         event.preventDefault()
         process_element_with_trigger(htmx_el, Some(target_el))
       }
@@ -165,6 +236,57 @@ fn handle_submit(evt : @core.Any) -> Unit {
 }
 
 ///|
+/// Find all elements with hx-trigger="load" and process them
+extern "js" fn process_load_triggers() -> Unit =
+  #|() => {
+  #|  const doc = document;
+  #|
+  #|  // Function to process a single element for load trigger
+  #|  const processElement = (el) => {
+  #|    const trigger = el.getAttribute('hx-trigger') || el.getAttribute('data-hx-trigger');
+  #|    if (trigger) {
+  #|      const parts = trigger.split(',').map(s => s.trim());
+  #|      for (const part of parts) {
+  #|        if (part === 'load' || part.startsWith('load ')) {
+  #|          // Create and dispatch a click event to trigger the request
+  #|          const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|          el.dispatchEvent(event);
+  #|          break;
+  #|        }
+  #|      }
+  #|    }
+  #|  };
+  #|
+  #|  // Process existing elements
+  #|  const elements = doc.querySelectorAll('[hx-trigger], [data-hx-trigger]');
+  #|  for (const el of elements) {
+  #|    processElement(el);
+  #|  }
+  #|
+  #|  // Set up MutationObserver to watch for new elements
+  #|  const observer = new MutationObserver((mutations) => {
+  #|    for (const mutation of mutations) {
+  #|      for (const node of mutation.addedNodes) {
+  #|        if (node.nodeType === 1) { // Element node
+  #|          // Check the node itself
+  #|          if (node.getAttribute && (node.getAttribute('hx-trigger') || node.getAttribute('data-hx-trigger'))) {
+  #|            processElement(node);
+  #|          }
+  #|          // Check descendants
+  #|          const descendants = node.querySelectorAll('[hx-trigger], [data-hx-trigger]');
+  #|          for (const desc of descendants) {
+  #|            processElement(desc);
+  #|          }
+  #|        }
+  #|      }
+  #|    }
+  #|  });
+  #|
+  #|  // Start observing the document
+  #|  observer.observe(doc.body, { childList: true, subtree: true });
+  #|}
+
+///|
 /// Initialize htmx - set up global event listeners using event delegation
 pub fn htmx_init() -> Unit {
   let doc = @dom.document()
@@ -174,4 +296,7 @@ pub fn htmx_init() -> Unit {
   doc_target.addEventListener("click", handle_click)
   doc_target.addEventListener("change", handle_change)
   doc_target.addEventListener("submit", handle_submit)
+
+  // Process load triggers
+  process_load_triggers()
 }

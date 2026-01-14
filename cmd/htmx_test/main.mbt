@@ -231,9 +231,47 @@ fn parse_event_args(
 }
 
 ///|
-fn process_any(_target : @core.Any) -> Unit {
-
-}
+/// Process an element for htmx - handles load triggers
+extern "js" fn process_any(target : @core.Any) -> Unit =
+  #|(target) => {
+  #|  if (!target) return;
+  #|
+  #|  // Function to process a single element for load trigger
+  #|  const processElement = (el) => {
+  #|    const trigger = el.getAttribute('hx-trigger') || el.getAttribute('data-hx-trigger');
+  #|    if (trigger) {
+  #|      const parts = trigger.split(',').map(s => s.trim());
+  #|      for (const part of parts) {
+  #|        if (part === 'load' || part.startsWith('load ')) {
+  #|          // Find the method attribute (hx-get, hx-post, etc.)
+  #|          const methodAttrs = ['hx-get', 'hx-post', 'hx-put', 'hx-delete', 'hx-patch',
+  #|                              'data-hx-get', 'data-hx-post', 'data-hx-put', 'data-hx-delete', 'data-hx-patch'];
+  #|          for (const attr of methodAttrs) {
+  #|            if (el.hasAttribute(attr)) {
+  #|              const url = el.getAttribute(attr);
+  #|              const method = attr.replace('data-', '').replace('hx-', '').toUpperCase();
+  #|              // Trigger click event which will be handled by htmx
+  #|              const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|              el.dispatchEvent(event);
+  #|              break;
+  #|            }
+  #|          }
+  #|          break;
+  #|        }
+  #|      }
+  #|    }
+  #|  };
+  #|
+  #|  // Check if target is an array (NodeList)
+  #|  if (Array.isArray(target) || target instanceof NodeList) {
+  #|    for (const el of target) {
+  #|      processElement(el);
+  #|    }
+  #|  } else {
+  #|    // Single element
+  #|    processElement(target);
+  #|  }
+  #|}
 
 ///|
 fn on_any(
