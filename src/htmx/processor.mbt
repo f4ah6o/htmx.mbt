@@ -287,6 +287,14 @@ extern "js" fn create_response_callback(
   #|      if (push_val && push_val !== "false") {
   #|        const dest_url = push_val === "true" ? url : push_val;
   #|        history.pushState(null, '', dest_url);
+  #|        // Save to history cache
+  #|        if (window.htmx && window.htmx._ && typeof window.htmx._ === 'function') {
+  #|          try {
+  #|            window.htmx._('saveToHistoryCache')(dest_url, target);
+  #|          } catch (e) {
+  #|            // Ignore errors
+  #|          }
+  #|        }
   #|      }
   #|    }
   #|  };

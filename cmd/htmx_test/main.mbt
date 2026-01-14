@@ -467,8 +467,60 @@ fn remove_extension_any(_name_any : @core.Any) -> Unit {
 }
 
 ///|
-fn internal_any(_name_any : @core.Any) -> @core.Any {
+
+///|
+/// Wrapper for saveToHistoryCache - (url, element, title) -> Unit
+fn save_to_history_cache_any(
+  url_any : @core.Any,
+  element_any : @core.Any,
+  title_any : @core.Any,
+) -> @core.Any {
+  let url = as_string(url_any)
+  let title = as_string(title_any)
+  @htmx.save_to_history_cache(url, element_any, title)
   @core.undefined()
+}
+
+///|
+/// Wrapper for getCachedHistory - (url) -> content or null
+fn get_cached_history_any(url_any : @core.Any) -> @core.Any {
+  let url = as_string(url_any)
+  match @htmx.get_cached_history(url) {
+    Some(content) => @core.any(content)
+    None => @core.null()
+  }
+}
+
+///|
+/// Wrapper for restoreHistory - (path) -> Unit
+fn restore_history_any(path_any : @core.Any) -> @core.Any {
+  let path = as_string(path_any)
+  @htmx.restore_history(path)
+  @core.undefined()
+}
+
+///|
+/// Wrapper for normalizePath - (path) -> normalized string
+fn normalize_path_any(path_any : @core.Any) -> @core.Any {
+  let path = as_string(path_any)
+  let normalized = @htmx.normalize_path(path)
+  @core.any(normalized)
+}
+
+///|
+fn internal_any(name_any : @core.Any) -> @core.Any {
+  if @core.is_nullish(name_any) {
+    @core.undefined()
+  } else {
+    let name = as_string(name_any)
+    match name {
+      "saveToHistoryCache" => @core.from_fn3(save_to_history_cache_any)
+      "getCachedHistory" => @core.from_fn1(get_cached_history_any)
+      "restoreHistory" => @core.from_fn1(restore_history_any)
+      "normalizePath" => @core.from_fn1(normalize_path_any)
+      _ => @core.undefined()
+    }
+  }
 }
 
 ///|
@@ -479,6 +531,8 @@ fn make_htmx_object() -> @core.Any {
   htmx_obj._set("version", @core.any("0.1.0-mbt"))
   // Set allowEval to true by default for hx-on functionality
   config_obj._set("allowEval", @core.any(true))
+  config_obj._set("historyCacheSize", @core.any(10))
+  config_obj._set("refreshOnHistoryMiss", @core.any(false))
   htmx_obj._set("config", config_obj)
   htmx_obj._set("cache", cache_obj)
   htmx_obj._set("location", window_location())

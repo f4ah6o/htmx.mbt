@@ -31,6 +31,8 @@ pub fn find_oob_target(@dom.Element, OobSpec) -> @dom.Element?
 
 pub fn find_targets_by_selector(@dom.Element, String) -> Array[@dom.Element]
 
+pub fn get_cached_history(String) -> String?
+
 pub fn get_disabled_elt(@dom.Element) -> String?
 
 pub fn get_form_data(@dom.Element) -> @http.FormData?
@@ -61,6 +63,8 @@ pub fn morph(@dom.Element, String) -> Unit
 
 pub fn morph_element(@dom.Element, @dom.Element) -> Unit
 
+pub fn normalize_path(String) -> String
+
 pub fn parse_oob_spec(String) -> OobSpec
 
 pub fn parse_trigger(String) -> TriggerDef
@@ -88,6 +92,10 @@ pub fn request_with_form_async(String, HttpMethod, @http.FormData?, @dom.Element
 pub async fn request_with_form_safe(String, HttpMethod, @http.FormData?, @dom.Element?) -> String? noraise
 
 pub fn request_with_form_sync(String, HttpMethod, @http.FormData?, @dom.Element?) -> String?
+
+pub fn restore_history(String) -> Unit
+
+pub fn save_to_history_cache(String, @core.Any, String) -> Unit
 
 pub fn show_indicators(Array[@dom.Element]) -> Unit
 
