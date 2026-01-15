@@ -732,18 +732,29 @@ fn handle_click(evt : @core.Any) -> Unit {
   if is_submit_button(target_el) {
     if has_containing_form(target_el) {
       let form = find_closest_form(target_el)
-      // Check if form itself has an htmx method attribute
-      match find_method_url(form) {
+      // Check if the button itself has an htmx method attribute
+      // If so, it should handle the click, not the form (indirect form submission)
+      match find_method_url(target_el) {
         Some(_) => {
-          // Submit buttons should always submit the form, regardless of hx-trigger
-          // The form's hx-trigger only affects what events automatically trigger,
-          // not explicit user action of clicking a submit button
-          event.preventDefault()
-          // Pass the button as submitter for formnovalidate check
-          process_element_with_trigger(form, Some(target_el))
-          return
+          // Button has its own htmx request, skip form submit handling
+          // It will be processed by find_htmx_element below
+          ()
         }
-        None => ()
+        None => {
+          // Button doesn't have htmx, check if form does
+          match find_method_url(form) {
+            Some(_) => {
+              // Submit buttons should always submit the form, regardless of hx-trigger
+              // The form's hx-trigger only affects what events automatically trigger,
+              // not explicit user action of clicking a submit button
+              event.preventDefault()
+              // Pass the button as submitter for formnovalidate check
+              process_element_with_trigger(form, Some(target_el))
+              return
+            }
+            None => ()
+          }
+        }
       }
     }
   }

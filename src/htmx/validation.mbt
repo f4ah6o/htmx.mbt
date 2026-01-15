@@ -29,7 +29,11 @@ extern "js" fn dispatch_validate_events(form : @dom.Element) -> Unit =
   #|(form) => {
   #|  const inputs = form.querySelectorAll('input, select, textarea');
   #|  for (let i = 0; i < inputs.length; i++) {
-  #|    const evt = new CustomEvent('htmx:validation:validate', { bubbles: true, cancelable: true });
+  #|    const detail = {
+  #|      elt: inputs[i],
+  #|      validity: inputs[i].validity || {}
+  #|    };
+  #|    const evt = new CustomEvent('htmx:validation:validate', { bubbles: true, cancelable: true, detail: detail });
   #|    inputs[i].dispatchEvent(evt);
   #|  }
   #|}
@@ -38,7 +42,11 @@ extern "js" fn dispatch_validate_events(form : @dom.Element) -> Unit =
 /// Dispatch htmx:validation:validate event on a single element
 extern "js" fn dispatch_validate_event(el : @dom.Element) -> Unit =
   #|(el) => {
-  #|  const evt = new CustomEvent('htmx:validation:validate', { bubbles: true, cancelable: true });
+  #|  const detail = {
+  #|    elt: el,
+  #|    validity: el.validity || {}
+  #|  };
+  #|  const evt = new CustomEvent('htmx:validation:validate', { bubbles: true, cancelable: true, detail: detail });
   #|  el.dispatchEvent(evt);
   #|}
 

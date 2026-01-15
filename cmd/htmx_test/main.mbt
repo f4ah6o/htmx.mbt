@@ -64,9 +64,23 @@ extern "js" fn dispatch_event(
 ) -> Unit =
   #|(target, event_name, detail) => {
   #|  if (!target) return;
-  #|  const opts = { bubbles: true, cancelable: true };
-  #|  if (detail != null) opts.detail = detail;
-  #|  const evt = detail != null ? new CustomEvent(event_name, opts) : new Event(event_name, opts);
+  #|  // Always use CustomEvent with detail to ensure compatibility with hyperscript
+  #|  // hyperscript expects event.detail to exist, even if empty
+  #|  // If detail is null or undefined, create an empty object
+  #|  // If detail exists but doesn't have 'elt', add target as 'elt' for htmx events
+  #|  let finalDetail = detail != null ? detail : {};
+  #|  // Ensure htmx-related events have 'elt' property pointing to target
+  #|  if (event_name.startsWith('htmx:') || eventName.startsWith('htmx:')) {
+  #|    if (!finalDetail.elt) {
+  #|      finalDetail = { ...finalDetail, elt: target };
+  #|    }
+  #|  }
+  #|  const opts = {
+  #|    bubbles: true,
+  #|    cancelable: true,
+  #|    detail: finalDetail
+  #|  };
+  #|  const evt = new CustomEvent(event_name, opts);
   #|  target.dispatchEvent(evt);
   #|}
 
