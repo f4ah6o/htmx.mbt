@@ -73,8 +73,6 @@ const config = {
     '!test/core/regressions.js',  // depends on fully implemented features
     // Skip tests that require full AJAX implementation
     '!test/core/ajax.js',
-    // Skip validation tests until validation is fully implemented
-    '!test/core/validation.js',
     // Skip tests that require config.responseHandling
     '!test/core/config.js',
     // Skip extension swap tests - extension system not fully implemented
