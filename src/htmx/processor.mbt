@@ -9,6 +9,7 @@ extern "js" fn values_to_js_object(
   values : Array[(String, String)],
 ) -> @core.Any =
   #|(values) => {
+  #|  console.log('[htmx.mbt PROCESSOR] values_to_js_object input:', values);
   #|  const obj = {};
   #|  // Handle both MoonBit Array structure and plain JavaScript array
   #|  if (values && values.buf) {
@@ -32,6 +33,7 @@ extern "js" fn values_to_js_object(
   #|      }
   #|    }
   #|  }
+  #|  console.log('[htmx.mbt PROCESSOR] values_to_js_object output:', obj);
   #|  return obj;
   #|}
 
@@ -39,6 +41,7 @@ extern "js" fn values_to_js_object(
 /// Merge source object into target object
 extern "js" fn merge_objects(target : @core.Any, source : @core.Any) -> Unit =
   #|(target, source) => {
+  #|  console.log('[htmx.mbt PROCESSOR] merge_objects - target before:', JSON.stringify(target), 'source:', JSON.stringify(source));
   #|  if (target && source) {
   #|    for (const key in source) {
   #|      if (source.hasOwnProperty(key)) {
@@ -46,6 +49,7 @@ extern "js" fn merge_objects(target : @core.Any, source : @core.Any) -> Unit =
   #|      }
   #|    }
   #|  }
+  #|  console.log('[htmx.mbt PROCESSOR] merge_objects - target after:', JSON.stringify(target));
   #|}
 
 ///|

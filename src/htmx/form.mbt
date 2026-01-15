@@ -22,7 +22,7 @@ pub fn collect_input_values(form : @dom.Element) -> Array[(String, String)] {
 extern "js" fn collect_input_values_inner(form : @dom.Element) -> Array[(String, String)] =
   #|(form) => {
   #|  const result = [];
-
+  #|
   #|  // Helper to process a single element
   #|  const processElement = (el) => {
   #|    if (!el || !el.getAttribute) return;
@@ -48,19 +48,21 @@ extern "js" fn collect_input_values_inner(form : @dom.Element) -> Array[(String,
   #|      }
   #|    }
   #|  };
-
+  #|
   #|  // Process the form element itself if it's an input
   #|  const formTag = form.tagName && form.tagName.toUpperCase();
   #|  if (formTag === 'INPUT' || formTag === 'SELECT' || formTag === 'TEXTAREA') {
   #|    processElement(form);
   #|  }
-
+  #|
   #|  // Process all child input elements
   #|  const inputs = form.querySelectorAll('input, select, textarea');
+  #|  console.log('[htmx.mbt FORM] collect_input_values on', form.tagName, 'found', inputs.length, 'inputs');
   #|  for (const el of inputs) {
   #|    processElement(el);
   #|  }
-
+  #|
+  #|  console.log('[htmx.mbt FORM] collected result:', result);
   #|  // Return as MoonBit Array structure
   #|  return { buf: result, start: 0, end: result.length };
   #|}
