@@ -570,3 +570,183 @@ pub fn get_indicator_elements(element : @dom.Element) -> Array[@dom.Element] {
     }
   }
 }
+
+///|
+/// Check if htmx.config.disableInheritance is true
+extern "js" fn get_disable_inheritance() -> Bool =
+  #|() => {
+  #|  try {
+  #|    return window.htmx && window.htmx.config && window.htmx.config.disableInheritance === true;
+  #|  } catch(e) {
+  #|    return false;
+  #|  }
+  #|}
+
+///|
+/// Get the hx-inherit attribute value (checks both hx-inherit and data-hx-inherit)
+pub fn get_hx_inherit(element : @dom.Element) -> String? {
+  match element.getAttribute("hx-inherit") {
+    Some(value) => Some(value)
+    Option::None => element.getAttribute("data-hx-inherit")
+  }
+}
+
+///|
+/// Parse hx-inherit value to get array of attribute names to inherit
+extern "js" fn parse_hx_inherit(value : String) -> @core.Any =
+  #|(value) => {
+  #|  if (!value || value === '*') return ['*'];
+  #|  return value.split(/\s+/).filter(s => s.length > 0);
+  #|}
+
+///|
+/// Check if a specific attribute should be inherited from parent
+/// Returns Some(value) if the attribute should be inherited, None otherwise
+fn should_inherit_attribute(
+  element : @dom.Element,
+  attr_name : String,
+) -> String? {
+  // If disableInheritance is false, inheritance is enabled by default
+  let disabled = get_disable_inheritance()
+  if not(disabled) {
+    // Inheritance is enabled by default, check parents
+    return find_inherited_attribute(element, attr_name)
+  }
+
+  // Inheritance is disabled by default, only inherit if parent has hx-inherit
+  find_inherited_attribute_with_check(element, attr_name)
+}
+
+///|
+/// Find inherited attribute from parent (when disableInheritance = false)
+fn find_inherited_attribute(
+  element : @dom.Element,
+  attr_name : String,
+) -> String? {
+  match get_parent_element(element) {
+    Some(parent) => {
+      // Check if parent has the attribute
+      match parent.getAttribute(attr_name) {
+        Some(value) => Some(value)
+        Option::None => {
+          // Check for data-hx-* prefix
+          let data_attr = with_data_prefix(attr_name)
+          match parent.getAttribute(data_attr) {
+            Some(value) => Some(value)
+            Option::None => find_inherited_attribute(parent, attr_name)
+          }
+        }
+      }
+    }
+    Option::None => Option::None
+  }
+}
+
+///|
+/// Find inherited attribute with hx-inherit check (when disableInheritance = true)
+fn find_inherited_attribute_with_check(
+  element : @dom.Element,
+  attr_name : String,
+) -> String? {
+  match get_parent_element(element) {
+    Some(parent) => {
+      // Check if parent has hx-inherit
+      match get_hx_inherit(parent) {
+        Some(inherit_value) => {
+          // Parse hx-inherit value
+          let inherit_array = parse_hx_inherit(inherit_value)
+          let inherits_all = check_inherits_all(inherit_array)
+          let inherits_this = check_includes_attribute(inherit_array, attr_name)
+
+          if inherits_all || inherits_this {
+            // Parent allows inheriting this attribute
+            match parent.getAttribute(attr_name) {
+              Some(value) => Some(value)
+              Option::None => {
+                // Check for data-hx-* prefix
+                let data_attr = with_data_prefix(attr_name)
+                match parent.getAttribute(data_attr) {
+                  Some(value) => Some(value)
+                  Option::None => find_inherited_attribute_with_check(parent, attr_name)
+                }
+              }
+            }
+          } else {
+            // Parent doesn't allow inheriting this attribute, keep searching up
+            find_inherited_attribute_with_check(parent, attr_name)
+          }
+        }
+        Option::None => find_inherited_attribute_with_check(parent, attr_name)
+      }
+    }
+    Option::None => Option::None
+  }
+}
+
+///|
+/// Check if hx-inherit array contains '*' (inherit all)
+extern "js" fn check_inherits_all(arr : @core.Any) -> Bool =
+  #|(arr) => {
+  #|  if (!arr || !Array.isArray(arr)) return false;
+  #|  return arr.includes('*');
+  #|}
+
+///|
+/// Check if hx-inherit array includes a specific attribute
+extern "js" fn check_includes_attribute(arr : @core.Any, attr : String) -> Bool =
+  #|(arr, attr) => {
+  #|  if (!arr || !Array.isArray(arr)) return false;
+  #|  return arr.includes(attr);
+  #|}
+
+///|
+/// Get target element with inheritance support
+pub fn get_target_with_inherit(element : @dom.Element) -> @dom.Element {
+  let target_attr = hx_target()
+  let result = match element.getAttribute(target_attr) {
+    Some(selector) => Some(selector)
+    Option::None => element.getAttribute(with_data_prefix(target_attr))
+  }
+
+  match result {
+    Some(selector) => {
+      match parse_extended_target(element, selector) {
+        Some(target) => target
+        None => element
+      }
+    }
+    None => {
+      // Try to inherit hx-target from parent
+      match should_inherit_attribute(element, target_attr) {
+        Some(inherited_selector) => {
+          match parse_extended_target(element, inherited_selector) {
+            Some(target) => target
+            None => element
+          }
+        }
+        None => element
+      }
+    }
+  }
+}
+
+///|
+/// Get swap style with inheritance support
+pub fn get_swap_style_with_inherit(element : @dom.Element) -> SwapStyle {
+  let swap_attr = hx_swap()
+  match element.getAttribute(swap_attr) {
+    Some(value) => SwapStyle::parse(value)
+    Option::None => {
+      match element.getAttribute(with_data_prefix(swap_attr)) {
+        Some(value) => SwapStyle::parse(value)
+        Option::None => {
+          // Try to inherit hx-swap from parent
+          match should_inherit_attribute(element, swap_attr) {
+            Some(inherited_value) => SwapStyle::parse(inherited_value)
+            None => SwapStyle::InnerHTML
+          }
+        }
+      }
+    }
+  }
+}

@@ -20,9 +20,10 @@ fn process_element_with_trigger(
     return
   }
 
-  // Get target and swap style
-  let target = get_target(element)
-  let swap_style = get_swap_style(element)
+  // Get target and swap style (with inheritance support)
+  let target = get_target_with_inherit(element)
+  let swap_style = get_swap_style_with_inherit(element)
+  let swap_style_str = swap_style.to_htmx_string()
 
   // Get disabled elements before request
   let disabled_elements = match get_disabled_elt(element) {
@@ -76,7 +77,7 @@ fn process_element_with_trigger(
 
   // Create callback for async response handling
   let callback = create_response_callback(
-    element, target, swap_style, url, disabled_elements, indicator_elements,
+    element, target, swap_style_str, url, disabled_elements, indicator_elements,
   )
 
   // Handle form data for POST/PUT/PATCH vs GET/DELETE
@@ -111,12 +112,12 @@ fn process_element_with_trigger(
 extern "js" fn create_response_callback(
   element : @dom.Element,
   target : @dom.Element,
-  swap_style : SwapStyle,
+  swap_style_str : String,
   url : String,
   disabled_elements : Array[@dom.Element],
   indicator_elements : Array[@dom.Element],
 ) -> @core.Any =
-  #|(element, target, swap_style, url, disabled_elements, indicator_elements) => {
+  #|(element, target, swap_style_str, url, disabled_elements, indicator_elements) => {
   #|  return function(responseText) {
   #|    // Hide indicators after request
   #|    if (indicator_elements.length > 0) {
@@ -158,9 +159,12 @@ extern "js" fn create_response_callback(
   #|      const defaultSwapStyle = typeof config.defaultSwapStyle === 'string'
   #|        ? config.defaultSwapStyle
   #|        : 'innerHTML';
-  #|      const swapStyle = swapSpec && typeof swapSpec.swapStyle === 'string'
-  #|        ? swapSpec.swapStyle
-  #|        : defaultSwapStyle;
+  #|      // Use the passed swap_style_str (with inheritance support) as priority
+  #|      const swapStyle = swap_style_str && typeof swap_style_str === 'string'
+  #|        ? swap_style_str
+  #|        : (swapSpec && typeof swapSpec.swapStyle === 'string'
+  #|          ? swapSpec.swapStyle
+  #|          : defaultSwapStyle);
   #|      const swapDelay = swapSpec && typeof swapSpec.swapDelay === 'number' ? swapSpec.swapDelay : 0;
   #|      const settleDelay = swapSpec && typeof swapSpec.settleDelay === 'number'
   #|        ? swapSpec.settleDelay

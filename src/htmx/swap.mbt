@@ -360,6 +360,22 @@ pub fn SwapStyle::parse(value : String) -> SwapStyle {
 }
 
 ///|
+/// Convert SwapStyle to lowercase string for htmx compatibility
+pub fn SwapStyle::to_htmx_string(self : SwapStyle) -> String {
+  match self {
+    InnerHTML => "innerHTML"
+    OuterHTML => "outerHTML"
+    BeforeBegin => "beforebegin"
+    AfterBegin => "afterbegin"
+    BeforeEnd => "beforeend"
+    AfterEnd => "afterend"
+    Delete => "delete"
+    None => "none"
+    Morph => "morph"
+  }
+}
+
+///|
 /// Get position string for insertAdjacentHTML
 fn SwapStyle::to_position(self : SwapStyle) -> String? {
   match self {
