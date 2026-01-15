@@ -44,7 +44,10 @@ pub extern "js" fn dispatch_htmx_event(
 
 ///|
 /// Dispatch htmx event with default empty detail object
-pub extern "js" fn dispatch_event(target : @dom.Element, event_name : String) -> Bool =
+pub extern "js" fn dispatch_event(
+  target : @dom.Element,
+  event_name : String,
+) -> Bool =
   #|(target, event_name) => {
   #|  return target.dispatchEvent(new CustomEvent(event_name, { bubbles: true, cancelable: true, detail: {} }));
   #|}

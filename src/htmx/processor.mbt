@@ -1139,7 +1139,12 @@ fn handle_submit(evt : @core.Any) -> Unit {
         // Check for throttle modifier
         let throttle_ms = get_throttle_from_trigger(htmx_el)
         if throttle_ms > 0 {
-          process_element_with_throttle(htmx_el, submitter, Some(evt), throttle_ms)
+          process_element_with_throttle(
+            htmx_el,
+            submitter,
+            Some(evt),
+            throttle_ms,
+          )
           return
         }
         process_element_with_trigger(htmx_el, submitter, Some(evt))

@@ -19,45 +19,91 @@ pub fn create_htmx_observer() -> @observer.MutationObserver
 
 pub fn disable_elements(Array[@dom.Element]) -> Unit
 
+pub fn dispatch_event(@dom.Element, String) -> Bool
+
+pub fn dispatch_htmx_event(@dom.Element, String, @core.Any) -> Bool
+
 pub fn enable_elements(Array[@dom.Element]) -> Unit
 
 pub fn execute_oob_swap(@dom.Element, @dom.Element, OobSpec) -> Unit
 
 pub fn find_htmx_element(@dom.Element) -> @dom.Element?
 
-pub fn find_method_url(@dom.Element) -> (HttpMethod, String)?
+pub fn find_method_url(@dom.Element) -> (String, String)?
 
 pub fn find_oob_target(@dom.Element, OobSpec) -> @dom.Element?
 
 pub fn find_targets_by_selector(@dom.Element, String) -> Array[@dom.Element]
 
+pub fn fire_config_request_event(@dom.Element, @core.Any, @core.Any) -> Bool
+
+pub fn get_attribute_with_prefix(@dom.Element, String) -> String?
+
 pub fn get_cached_history(String) -> String?
 
 pub fn get_disabled_elt(@dom.Element) -> String?
 
+pub fn get_expression_vars(@dom.Element?, @core.Any?) -> Map[String, String]
+
 pub fn get_form_data(@dom.Element) -> @http.FormData?
 
-pub fn get_indicator(@dom.Element) -> String?
+pub fn get_hx_inherit(@dom.Element) -> String?
 
-pub fn get_indicator_elements(@dom.Element) -> Array[@dom.Element]
+pub fn get_hx_methods() -> Array[String]
 
-pub fn get_indicator_with_inherit(@dom.Element) -> String?
+pub fn get_method_attribute(@dom.Element, String) -> String?
 
-pub fn get_push_url(@dom.Element) -> String?
+pub fn get_swap_style_with_inherit(@dom.Element) -> SwapStyle
 
-pub fn get_select(@dom.Element) -> String?
+pub fn get_target_with_inherit(@dom.Element) -> @dom.Element
 
-pub fn get_swap_style(@dom.Element) -> SwapStyle
-
-pub fn get_target(@dom.Element) -> @dom.Element
-
-pub fn get_trigger_event(@dom.Element) -> String
+pub fn has_htmx_attribute(@dom.Element) -> Bool
 
 pub fn hide_indicators(Array[@dom.Element]) -> Unit
 
 pub fn htmx_init() -> Unit
 
+pub fn hx_boost() -> String
+
+pub fn hx_delete() -> String
+
+pub fn hx_disabled_elt() -> String
+
+pub fn hx_get() -> String
+
+pub fn hx_headers() -> String
+
+pub fn hx_include() -> String
+
+pub fn hx_indicator() -> String
+
+pub fn hx_inherit() -> String
+
+pub fn hx_params() -> String
+
+pub fn hx_patch() -> String
+
+pub fn hx_post() -> String
+
+pub fn hx_push_url() -> String
+
+pub fn hx_put() -> String
+
+pub fn hx_select() -> String
+
+pub fn hx_swap() -> String
+
+pub fn hx_target() -> String
+
+pub fn hx_trigger() -> String
+
+pub fn hx_validate() -> String
+
+pub fn hx_vals() -> String
+
 pub fn init_with_observer() -> @observer.MutationObserver
+
+pub fn kebab_to_camel(String) -> String
 
 pub fn morph(@dom.Element, String) -> Unit
 
@@ -109,6 +155,8 @@ pub fn validate_element_with_trigger(@dom.Element, @dom.Element?) -> Bool
 
 pub fn values_to_query_string(Array[(String, String)]) -> String
 
+pub fn with_data_prefix(String) -> String
+
 // Errors
 
 // Types and methods
@@ -120,6 +168,7 @@ pub enum HttpMethod {
   Patch
 }
 pub fn HttpMethod::from_attr(String) -> Self?
+pub fn HttpMethod::from_string(String) -> Self?
 pub fn HttpMethod::has_body(Self) -> Bool
 pub fn HttpMethod::to_string(Self) -> String
 pub impl Show for HttpMethod
@@ -175,6 +224,7 @@ pub enum SwapStyle {
   None
 }
 pub fn SwapStyle::parse(String) -> Self
+pub fn SwapStyle::to_htmx_string(Self) -> String
 pub impl Show for SwapStyle
 
 pub struct TriggerDef {
