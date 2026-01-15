@@ -304,6 +304,8 @@ extern "js" fn request_with_form_async_callback(
   #|      params.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
   #|    }
   #|    body = params.join('&');
+  #|    // Set Content-Type for URL-encoded body
+  #|    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
   #|  }
   #|
   #|  xhr.send(body);

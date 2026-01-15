@@ -170,7 +170,17 @@ extern "js" fn get_expression_vars_inner(
   #|  const entries = Object.entries(result);
   #|  const buf = [];
   #|  for (const [k, v] of entries) {
-  #|    buf.push({ _0: k, _1: String(v) });
+  #|    let strValue;
+  #|    // Convert objects to JSON string, other values to string
+  #|    // null becomes 'null' string for compatibility
+  #|    if (v === null) {
+  #|      strValue = 'null';
+  #|    } else if (typeof v === 'object') {
+  #|      strValue = JSON.stringify(v);
+  #|    } else {
+  #|      strValue = String(v);
+  #|    }
+  #|    buf.push({ _0: k, _1: strValue });
   #|  }
   #|  return { buf: buf, start: 0, end: buf.length };
   #|}

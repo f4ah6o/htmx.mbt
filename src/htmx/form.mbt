@@ -12,27 +12,60 @@ extern "js" fn new_form_data() -> @http.FormData =
   #|() => new FormData()
 
 ///|
-/// Get all form input values as key-value pairs
+/// Get all form input values as key-value pairs (includes element itself if it's an input)
 pub fn collect_input_values(form : @dom.Element) -> Array[(String, String)] {
-  let result : Array[(String, String)] = []
-
-  // Query all input, select, textarea elements
-  let inputs = form.querySelectorAll("input, select, textarea")
-  for element in inputs {
-    match element.getAttribute("name") {
-      Some(name) if name.length() > 0 => {
-        // Get value based on element type
-        let value = get_input_value(element)
-        match value {
-          Some(v) => result.push((name, v))
-          None => ()
-        }
-      }
-      _ => ()
-    }
-  }
-  result
+  collect_input_values_inner(form)
 }
+
+///|
+/// Internal FFI to collect input values
+extern "js" fn collect_input_values_inner(form : @dom.Element) -> Array[(String, String)] =
+  #|(form) => {
+  #|  const result = [];
+  #|
+  #|  // Helper to process a single element
+  #|  const processElement = (el) => {
+  #|    if (!el || !el.getAttribute) return;
+  #|    const name = el.getAttribute('name');
+  #|    if (name && name.length > 0) {
+  #|      const tag = el.tagName && el.tagName.toUpperCase();
+  #|      if (tag === 'INPUT') {
+  #|        const type = (el.getAttribute('type') || 'text').toLowerCase();
+  #|        if (type === 'checkbox' || type === 'radio') {
+  #|          if (el.checked) {
+  #|            const value = el.getAttribute('value') || 'on';
+  #|            result.push({ _0: name, _1: value });
+  #|          }
+  #|        } else if (type === 'file') {
+  #|          // Skip file inputs
+  #|        } else {
+  #|          const value = el.value || '';
+  #|          result.push([name, value]);
+  #|        }
+  #|      } else if (tag === 'SELECT' || tag === 'TEXTAREA') {
+  #|        const value = el.value || '';
+  #|        result.push([name, value]);
+  #|      }
+  #|    }
+  #|  };
+  #|
+  #|  // Process the form element itself if it's an input
+  #|  const formTag = form.tagName && form.tagName.toUpperCase();
+  #|  if (formTag === 'INPUT' || formTag === 'SELECT' || formTag === 'TEXTAREA') {
+  #|    processElement(form);
+  #|  }
+  #|
+  #|  // Process all child input elements
+  #|  const inputs = form.querySelectorAll('input, select, textarea');
+  #|  console.log('[htmx.mbt FORM] collect_input_values on', form.tagName, 'found', inputs.length, 'inputs');
+  #|  for (const el of inputs) {
+  #|    processElement(el);
+  #|  }
+  #|
+  #|  console.log('[htmx.mbt FORM] collected result:', result);
+  #|  // Return as MoonBit Array structure
+  #|  return { buf: result, start: 0, end: result.length };
+  #|}
 
 ///|
 /// Get value from an input element
