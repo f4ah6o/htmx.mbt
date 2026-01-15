@@ -31,8 +31,14 @@ extern "js" fn get_expression_vars_inner(
   #|
   #|  // Check for delay-stored event (used when delay modifier is active)
   #|  let actualEvent = event;
-  #|  if (element && element['htmx-internal-data'] && element['htmx-internal-data'].delayEvent) {
-  #|    actualEvent = element['htmx-internal-data'].delayEvent;
+  #|  if (element && element['htmx-internal-data']) {
+  #|    const data = element['htmx-internal-data'];
+  #|    // Prioritize currentEvent (set during delay callback) over delayEvent
+  #|    if (data.currentEvent) {
+  #|      actualEvent = data.currentEvent;
+  #|    } else if (data.delayEvent) {
+  #|      actualEvent = data.delayEvent;
+  #|    }
   #|  }
   #|  // Helper to get attribute value (checks both hx-* and data-hx-*)
   #|  const getAttributeValue = (el, attr) => {

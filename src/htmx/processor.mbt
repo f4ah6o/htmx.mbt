@@ -775,8 +775,16 @@ extern "js" fn has_containing_form(el : @dom.Element) -> Bool =
 /// Get delay value in milliseconds from hx-trigger attribute
 extern "js" fn get_delay_from_trigger(element : @dom.Element) -> Int =
   #|(element) => {
+  #|  // Only log for the delay test element (id="test")
+  #|  if (element.id === 'test') {
+  #|    console.log("[htmx.mbt DELAY TEST] element.id:", element.id);
+  #|    console.log("[htmx.mbt DELAY TEST] element.outerHTML:", element.outerHTML);
+  #|    const trigger1 = element.getAttribute('hx-trigger');
+  #|    const trigger2 = element.getAttribute('data-hx-trigger');
+  #|    console.log("[htmx.mbt DELAY TEST] getAttribute('hx-trigger'):", trigger1);
+  #|    console.log("[htmx.mbt DELAY TEST] getAttribute('data-hx-trigger'):", trigger2);
+  #|  }
   #|  const trigger = element.getAttribute('hx-trigger') || element.getAttribute('data-hx-trigger');
-  #|  console.log("[htmx.mbt DELAY] get_delay_from_trigger: trigger='" + trigger + "'");
   #|  if (!trigger) return 0;
   #|  const delayMatch = trigger.match(/delay:(\d+(?:ms)?)/);
   #|  if (delayMatch) {
@@ -821,21 +829,33 @@ extern "js" fn process_element_with_delay(
   #|
   #|  // Store the event for use in hx-vals/hx-vars evaluation
   #|  data.delayEvent = event;
+  #|  console.log("[htmx.mbt DELAY] process_element_with_delay called: delay_ms=" + delay_ms);
   #|
   #|  // Store trigger element reference
   #|  data.delayTriggerEl = trigger_el;
+  #|  console.log("[htmx.mbt DELAY] Stored event:", event);
   #|
   #|  // Mark element as waiting for delay
   #|  data.delayPending = true;
   #|
   #|  // Set new timer - trigger a click event after delay to re-enter handle_click
   #|  data.delayTimer = setTimeout(() => {
+  #|    // Set currentEvent for vars.mbt to access
+  #|    data.currentEvent = event;
+  #|
+  #|  console.log("[htmx.mbt DELAY] Timer set, currentEvent set");
   #|    data.delayTimer = null;
-  #|    data.delayPending = false;
+  #|    // Keep delayPending true so handle_click knows this is a delayed trigger
   #|    // Trigger the click event which will call process_element_with_trigger
-  #|    // The event is still stored in data.delayEvent for hx-vals evaluation
+  #|    // The event is now stored in data.currentEvent for hx-vals evaluation
   #|    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
   #|    element.dispatchEvent(clickEvent);
+  #|
+  #|    // Clear currentEvent after event is processed
+  #|    setTimeout(() => {
+  #|      data.currentEvent = null;
+  #|      data.delayEvent = null;
+  #|    }, 0);
   #|  }, delay_ms);
   #|}
 
@@ -846,6 +866,11 @@ extern "js" fn is_delay_pending(element : @dom.Element) -> Bool =
   #|  const data = element['htmx-internal-data'];
   #|  return !!(data && data.delayPending);
   #|}
+
+///|
+/// Get element id attribute for debugging
+extern "js" fn get_element_id(elt : @dom.Element) -> String =
+  #|(elt) => elt.id || ""
 
 ///|
 /// Handle click events for htmx elements

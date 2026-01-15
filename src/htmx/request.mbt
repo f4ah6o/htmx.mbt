@@ -170,6 +170,12 @@ pub extern "js" fn fire_config_request_event(
   headers : @core.Any,
 ) -> Bool =
   #|(element, parameters, headers) => {
+  #|  // Log for delay test debugging
+  #|  if (element.id === 'test') {
+  #|    console.log('[htmx.mbt CONFIG] ========== DELAY TEST: fire_config_request_event called! ==========');
+  #|    console.log('[htmx.mbt CONFIG] element.id:', element.id);
+  #|    console.log('[htmx.mbt CONFIG] parameters:', parameters);
+  #|  }
   #|  // Create a plain JavaScript object for parameters
   #|  const plainParams = {};
   #|  if (parameters && parameters.buf && Array.isArray(parameters.buf)) {
