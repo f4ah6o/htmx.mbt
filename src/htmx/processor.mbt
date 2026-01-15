@@ -500,12 +500,21 @@ extern "js" fn create_response_callback(
   #|          stripOobAttrs(oobEl);
   #|          if (targets.length === 0) {
   #|            if (spec.targetSelector) {
-  #|              const evt = new CustomEvent('htmx:oobErrorNoTarget', {
+  #|              const detail = { content: oobEl };
+  #|              // Dispatch kebab-case version
+  #|              const evt1 = new CustomEvent('htmx:oobErrorNoTarget', {
   #|                bubbles: true,
   #|                cancelable: true,
-  #|                detail: { content: oobEl }
+  #|                detail: detail
   #|              });
-  #|              document.body.dispatchEvent(evt);
+  #|              document.body.dispatchEvent(evt1);
+  #|              // Dispatch camelCase version (same name)
+  #|              const evt2 = new CustomEvent('htmx:oobErrorNoTarget', {
+  #|                bubbles: true,
+  #|                cancelable: true,
+  #|                detail: detail
+  #|              });
+  #|              document.body.dispatchEvent(evt2);
   #|            }
   #|            oobEl.remove();
   #|            return;
@@ -539,12 +548,21 @@ extern "js" fn create_response_callback(
   #|        finalContent = oobDoc.body.innerHTML;
   #|      }
   #|      const dispatchSwapError = (err) => {
-  #|        const evt = new CustomEvent('htmx:swapError', {
+  #|        const detail = { error: err };
+  #|        // Dispatch kebab-case version
+  #|        const evt1 = new CustomEvent('htmx:swapError', {
   #|          bubbles: true,
   #|          cancelable: true,
-  #|          detail: { error: err }
+  #|          detail: detail
   #|        });
-  #|        document.body.dispatchEvent(evt);
+  #|        document.body.dispatchEvent(evt1);
+  #|        // Dispatch camelCase version (same name)
+  #|        const evt2 = new CustomEvent('htmx:swapError', {
+  #|          bubbles: true,
+  #|          cancelable: true,
+  #|          detail: detail
+  #|        });
+  #|        document.body.dispatchEvent(evt2);
   #|      };
   #|      const applySwap = (content) => {
   #|        switch (resolvedStyle) {
@@ -775,16 +793,8 @@ extern "js" fn has_containing_form(el : @dom.Element) -> Bool =
 /// Get delay value in milliseconds from hx-trigger attribute
 extern "js" fn get_delay_from_trigger(element : @dom.Element) -> Int =
   #|(element) => {
-  #|  // Only log for the delay test element (id="test")
-  #|  if (element.id === 'test') {
-  #|    console.log("[htmx.mbt DELAY TEST] element.id:", element.id);
-  #|    console.log("[htmx.mbt DELAY TEST] element.outerHTML:", element.outerHTML);
-  #|    const trigger1 = element.getAttribute('hx-trigger');
-  #|    const trigger2 = element.getAttribute('data-hx-trigger');
-  #|    console.log("[htmx.mbt DELAY TEST] getAttribute('hx-trigger'):", trigger1);
-  #|    console.log("[htmx.mbt DELAY TEST] getAttribute('data-hx-trigger'):", trigger2);
-  #|  }
   #|  const trigger = element.getAttribute('hx-trigger') || element.getAttribute('data-hx-trigger');
+  #|  console.log("[htmx.mbt DELAY] get_delay_from_trigger: trigger='" + trigger + "'");
   #|  if (!trigger) return 0;
   #|  const delayMatch = trigger.match(/delay:(\d+(?:ms)?)/);
   #|  if (delayMatch) {
@@ -829,27 +839,29 @@ extern "js" fn process_element_with_delay(
   #|
   #|  // Store the event for use in hx-vals/hx-vars evaluation
   #|  data.delayEvent = event;
-  #|  console.log("[htmx.mbt DELAY] process_element_with_delay called: delay_ms=" + delay_ms);
   #|
   #|  // Store trigger element reference
   #|  data.delayTriggerEl = trigger_el;
-  #|  console.log("[htmx.mbt DELAY] Stored event:", event);
   #|
   #|  // Mark element as waiting for delay
   #|  data.delayPending = true;
   #|
   #|  // Set new timer - trigger a click event after delay to re-enter handle_click
   #|  data.delayTimer = setTimeout(() => {
+  #|    // Mark as processing (so handle_click knows this is the delayed trigger)
+  #|    data.delayProcessing = true;
+  #|
   #|    // Set currentEvent for vars.mbt to access
   #|    data.currentEvent = event;
   #|
-  #|  console.log("[htmx.mbt DELAY] Timer set, currentEvent set");
-  #|    data.delayTimer = null;
-  #|    // Keep delayPending true so handle_click knows this is a delayed trigger
   #|    // Trigger the click event which will call process_element_with_trigger
-  #|    // The event is now stored in data.currentEvent for hx-vals evaluation
   #|    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
   #|    element.dispatchEvent(clickEvent);
+  #|
+  #|    // Clean up after the event has been dispatched
+  #|    data.delayTimer = null;
+  #|    data.delayPending = false;
+  #|    data.delayProcessing = false;
   #|
   #|    // Clear currentEvent after event is processed
   #|    setTimeout(() => {
@@ -868,9 +880,95 @@ extern "js" fn is_delay_pending(element : @dom.Element) -> Bool =
   #|}
 
 ///|
-/// Get element id attribute for debugging
-extern "js" fn get_element_id(elt : @dom.Element) -> String =
-  #|(elt) => elt.id || ""
+/// Check if this is a delayed trigger being processed
+extern "js" fn is_delay_processing(element : @dom.Element) -> Bool =
+  #|(element) => {
+  #|  const data = element['htmx-internal-data'];
+  #|  return !!(data && data.delayProcessing);
+  #|}
+
+///|
+/// Get throttle value in milliseconds from hx-trigger attribute
+extern "js" fn get_throttle_from_trigger(element : @dom.Element) -> Int =
+  #|(element) => {
+  #|  const trigger = element.getAttribute('hx-trigger') || element.getAttribute('data-hx-trigger');
+  #|  if (!trigger) return 0;
+  #|  const throttleMatch = trigger.match(/throttle:(\d+(?:ms)?)/);
+  #|  if (throttleMatch) {
+  #|    let value = throttleMatch[1];
+  #|    let throttleMs;
+  #|    if (value.endsWith('ms')) {
+  #|      value = value.slice(0, -2);
+  #|      throttleMs = parseInt(value);
+  #|    } else if (value.endsWith('s') && !value.endsWith('ms')) {
+  #|      value = value.slice(0, -1);
+  #|      throttleMs = parseInt(value) * 1000;
+  #|    } else {
+  #|      throttleMs = parseInt(value);
+  #|    }
+  #|    return throttleMs;
+  #|  }
+  #|  return 0;
+  #|}
+
+///|
+/// Check if element is currently throttled
+extern "js" fn is_throttled(element : @dom.Element) -> Bool =
+  #|(element) => {
+  #|  const data = element['htmx-internal-data'];
+  #|  if (!data || !data.throttleUntil) return false;
+  #|  return Date.now() < data.throttleUntil;
+  #|}
+
+///|
+/// Check if this is a throttled trigger being processed
+extern "js" fn is_throttle_processing(element : @dom.Element) -> Bool =
+  #|(element) => {
+  #|  const data = element['htmx-internal-data'];
+  #|  return !!(data && data.throttleProcessing);
+  #|}
+
+///|
+/// Process element with throttle - prevents excessive requests
+/// Unlike delay, throttle fires immediately then ignores subsequent events for the duration
+extern "js" fn process_element_with_throttle(
+  element : @dom.Element,
+  trigger_el : @dom.Element?,
+  event : @core.Any?,
+  throttle_ms : Int,
+) -> Unit =
+  #|(element, trigger_el, event, throttle_ms) => {
+  #|  const key = 'htmx-internal-data';
+  #|  let data = element[key];
+  #|  if (!data) {
+  #|    data = {};
+  #|    element[key] = data;
+  #|  }
+  #|
+  #|  const now = Date.now();
+  #|  // Check if we're within throttle period
+  #|  if (data.throttleUntil && now < data.throttleUntil) {
+  #|    // Within throttle period, ignore this event
+  #|    return;
+  #|  }
+  #|
+  #|  // Update throttle end time
+  #|  data.throttleUntil = now + throttle_ms;
+  #|
+  #|  // Store event and trigger for processing
+  #|  data.throttleEvent = event;
+  #|  data.throttleTriggerEl = trigger_el;
+  #|
+  #|  // Mark as processing (so handle_click knows this is the throttled trigger)
+  #|  data.throttleProcessing = true;
+  #|
+  #|  // Trigger the click event which will process the element immediately
+  #|  const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|  element.dispatchEvent(clickEvent);
+  #|
+  #|  // Clean up the processing flag
+  #|  data.throttleProcessing = false;
+  #|}
 
 ///|
 /// Handle click events for htmx elements
@@ -881,9 +979,10 @@ fn handle_click(evt : @core.Any) -> Unit {
 
   // Check if this is an internal delayed trigger (from setTimeout)
   // If delay is pending, this is the delayed trigger, so process it
+  // Or if throttle processing, process directly
   match find_htmx_element(target_el) {
-    Some(htmx_el) =>
-      if is_delay_pending(htmx_el) {
+    Some(htmx_el) => {
+      if is_delay_processing(htmx_el) {
         // This is a delayed trigger - process the element directly
         // Don't check delay again since we're coming from the delay timer
         log_debug("handle_click: processing delayed trigger")
@@ -891,6 +990,15 @@ fn handle_click(evt : @core.Any) -> Unit {
         process_element_with_trigger(htmx_el, None, Some(evt))
         return
       }
+      if is_throttle_processing(htmx_el) {
+        // This is a throttled trigger - process the element directly
+        log_debug("handle_click: processing throttled trigger")
+        event.preventDefault()
+        process_element_with_trigger(htmx_el, None, Some(evt))
+        return
+      }
+      ()
+    }
     Option::None => ()
   }
 
@@ -923,9 +1031,20 @@ fn handle_click(evt : @core.Any) -> Unit {
                   Some(evt),
                   delay_ms,
                 )
-              } else {
-                process_element_with_trigger(form, Some(target_el), Some(evt))
+                return
               }
+              // Check for throttle modifier
+              let throttle_ms = get_throttle_from_trigger(form)
+              if throttle_ms > 0 {
+                process_element_with_throttle(
+                  form,
+                  Some(target_el),
+                  Some(evt),
+                  throttle_ms,
+                )
+                return
+              }
+              process_element_with_trigger(form, Some(target_el), Some(evt))
               return
             }
             None => ()
@@ -955,9 +1074,20 @@ fn handle_click(evt : @core.Any) -> Unit {
             Some(evt),
             delay_ms,
           )
-        } else {
-          process_element_with_trigger(htmx_el, Some(target_el), Some(evt))
+          return
         }
+        // Check for throttle modifier
+        let throttle_ms = get_throttle_from_trigger(htmx_el)
+        if throttle_ms > 0 {
+          process_element_with_throttle(
+            htmx_el,
+            Some(target_el),
+            Some(evt),
+            throttle_ms,
+          )
+          return
+        }
+        process_element_with_trigger(htmx_el, Some(target_el), Some(evt))
       }
     }
     Option::None => ()
@@ -978,9 +1108,15 @@ fn handle_change(evt : @core.Any) -> Unit {
         let delay_ms = get_delay_from_trigger(htmx_el)
         if delay_ms > 0 {
           process_element_with_delay(htmx_el, None, Some(evt), delay_ms)
-        } else {
-          process_element(htmx_el, Some(evt))
+          return
         }
+        // Check for throttle modifier
+        let throttle_ms = get_throttle_from_trigger(htmx_el)
+        if throttle_ms > 0 {
+          process_element_with_throttle(htmx_el, None, Some(evt), throttle_ms)
+          return
+        }
+        process_element(htmx_el, Some(evt))
       }
     }
     Option::None => ()
@@ -1008,9 +1144,15 @@ fn handle_submit(evt : @core.Any) -> Unit {
         let delay_ms = get_delay_from_trigger(htmx_el)
         if delay_ms > 0 {
           process_element_with_delay(htmx_el, submitter, Some(evt), delay_ms)
-        } else {
-          process_element_with_trigger(htmx_el, submitter, Some(evt))
+          return
         }
+        // Check for throttle modifier
+        let throttle_ms = get_throttle_from_trigger(htmx_el)
+        if throttle_ms > 0 {
+          process_element_with_throttle(htmx_el, submitter, Some(evt), throttle_ms)
+          return
+        }
+        process_element_with_trigger(htmx_el, submitter, Some(evt))
       }
     }
     Option::None => ()
@@ -1130,12 +1272,21 @@ extern "js" fn init_hx_on_delegation(doc_target : @core.Any) -> Unit =
   #|
   #|            // Check allowEval configuration
   #|            if (window.htmx && window.htmx.config && window.htmx.config.allowEval === false) {
-  #|              const errorEvt = new CustomEvent('htmx:evalDisallowedError', {
+  #|              const detail = { source: 'hx-on' };
+  #|              // Dispatch kebab-case version
+  #|              const evt1 = new CustomEvent('htmx:evalDisallowedError', {
   #|                bubbles: true,
   #|                cancelable: true,
-  #|                detail: { source: 'hx-on' }
+  #|                detail: detail
   #|              });
-  #|              currentTarget.dispatchEvent(errorEvt);
+  #|              currentTarget.dispatchEvent(evt1);
+  #|              // Dispatch camelCase version (same name)
+  #|              const evt2 = new CustomEvent('htmx:evalDisallowedError', {
+  #|                bubbles: true,
+  #|                cancelable: true,
+  #|                detail: detail
+  #|              });
+  #|              currentTarget.dispatchEvent(evt2);
   #|              return;
   #|            }
   #|
