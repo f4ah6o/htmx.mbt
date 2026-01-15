@@ -1,0 +1,5 @@
+import { "f4ah6o/htmx/src/htmx" as @htmx, "mizchi/js/core" }
+
+options(
+  "is-main": true,
+)

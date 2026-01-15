@@ -25,15 +25,12 @@ pub fn get_attribute_with_prefix(elt : @dom.Element, attr : String) -> String? {
 /// Check if element has any htmx attribute
 pub fn has_htmx_attribute(el : @dom.Element) -> Bool {
   let attrs = [
-    "hx-get", "hx-post", "hx-put", "hx-delete", "hx-patch",
-    "hx-trigger", "hx-target", "hx-swap", "hx-swap-oob",
-    "hx-vals", "hx-vars", "hx-headers", "hx-include",
-    "hx-params", "hx-encoding", "hx-confirm", "hx-prompt",
-    "hx-disable", "hx-indicator", "hx-disabled-elt",
-    "hx-push-url", "hx-select", "hx-select-oob",
-    "hx-history-elt", "hx-boost", "hx-inherit",
-    "hx-on", "hx-ext", "hx-validate", "hx-request",
-    "hx-replace-url", "hx-disinherit", "hx-preserve"
+    "hx-get", "hx-post", "hx-put", "hx-delete", "hx-patch", "hx-trigger", "hx-target",
+    "hx-swap", "hx-swap-oob", "hx-vals", "hx-vars", "hx-headers", "hx-include", "hx-params",
+    "hx-encoding", "hx-confirm", "hx-prompt", "hx-disable", "hx-indicator", "hx-disabled-elt",
+    "hx-push-url", "hx-select", "hx-select-oob", "hx-history-elt", "hx-boost", "hx-inherit",
+    "hx-on", "hx-ext", "hx-validate", "hx-request", "hx-replace-url", "hx-disinherit",
+    "hx-preserve",
   ]
   let mut index = 0
   while index < attrs.length() {
@@ -53,19 +50,29 @@ pub fn with_data_prefix(s : String) -> String {
 }
 
 ///|
-pub fn hx_get() -> String { "hx-get" }
+pub fn hx_get() -> String {
+  "hx-get"
+}
 
 ///|
-pub fn hx_post() -> String { "hx-post" }
+pub fn hx_post() -> String {
+  "hx-post"
+}
 
 ///|
-pub fn hx_put() -> String { "hx-put" }
+pub fn hx_put() -> String {
+  "hx-put"
+}
 
 ///|
-pub fn hx_delete() -> String { "hx-delete" }
+pub fn hx_delete() -> String {
+  "hx-delete"
+}
 
 ///|
-pub fn hx_patch() -> String { "hx-patch" }
+pub fn hx_patch() -> String {
+  "hx-patch"
+}
 
 ///|
 /// Get all htmx method attribute names
@@ -74,46 +81,74 @@ pub fn get_hx_methods() -> Array[String] {
 }
 
 ///|
-pub fn hx_trigger() -> String { "hx-trigger" }
+pub fn hx_trigger() -> String {
+  "hx-trigger"
+}
 
 ///|
-pub fn hx_target() -> String { "hx-target" }
+pub fn hx_target() -> String {
+  "hx-target"
+}
 
 ///|
-pub fn hx_swap() -> String { "hx-swap" }
+pub fn hx_swap() -> String {
+  "hx-swap"
+}
 
 ///|
-pub fn hx_vals() -> String { "hx-vals" }
+pub fn hx_vals() -> String {
+  "hx-vals"
+}
 
 ///|
-pub fn hx_headers() -> String { "hx-headers" }
+pub fn hx_headers() -> String {
+  "hx-headers"
+}
 
 ///|
-pub fn hx_include() -> String { "hx-include" }
+pub fn hx_include() -> String {
+  "hx-include"
+}
 
 ///|
-pub fn hx_params() -> String { "hx-params" }
+pub fn hx_params() -> String {
+  "hx-params"
+}
 
 ///|
-pub fn hx_boost() -> String { "hx-boost" }
+pub fn hx_boost() -> String {
+  "hx-boost"
+}
 
 ///|
-pub fn hx_select() -> String { "hx-select" }
+pub fn hx_select() -> String {
+  "hx-select"
+}
 
 ///|
-pub fn hx_push_url() -> String { "hx-push-url" }
+pub fn hx_push_url() -> String {
+  "hx-push-url"
+}
 
 ///|
-pub fn hx_indicator() -> String { "hx-indicator" }
+pub fn hx_indicator() -> String {
+  "hx-indicator"
+}
 
 ///|
-pub fn hx_disabled_elt() -> String { "hx-disabled-elt" }
+pub fn hx_disabled_elt() -> String {
+  "hx-disabled-elt"
+}
 
 ///|
-pub fn hx_inherit() -> String { "hx-inherit" }
+pub fn hx_inherit() -> String {
+  "hx-inherit"
+}
 
 ///|
-pub fn hx_validate() -> String { "hx-validate" }
+pub fn hx_validate() -> String {
+  "hx-validate"
+}
 
 ///|
 extern "js" fn log_debug_attr(msg : String) -> Unit =
@@ -149,14 +184,19 @@ fn parse_extended_target(
   } else if selector.has_prefix("next") {
     parse_next_target(element, selector)
   } else {
-    log_debug_attr("parse_extended_target: default querySelector '" + selector + "'")
+    log_debug_attr(
+      "parse_extended_target: default querySelector '" + selector + "'",
+    )
     @dom.document().querySelector(selector)
   }
 }
 
 ///|
 /// Parse 'next' target syntax (e.g., "next", "next .sibling")
-fn parse_next_target(element : @dom.Element, selector : String) -> @dom.Element? {
+fn parse_next_target(
+  element : @dom.Element,
+  selector : String,
+) -> @dom.Element? {
   log_debug_attr("parse_next_target: selector = '" + selector + "'")
   if selector == "next" {
     match element.nextElementSibling() {
@@ -166,13 +206,7 @@ fn parse_next_target(element : @dom.Element, selector : String) -> @dom.Element?
   } else {
     let css = substring_after(selector, 5)
     match element.nextElementSibling() {
-      Some(next) => {
-        if element_matches(next, css) {
-          Some(next)
-        } else {
-          None
-        }
-      }
+      Some(next) => if element_matches(next, css) { Some(next) } else { None }
       None => None
     }
   }
@@ -254,7 +288,10 @@ extern "js" fn check_inherits_all(arr : Array[String]) -> Bool =
 
 ///|
 /// Check if hx-inherit array includes a specific attribute
-extern "js" fn check_includes_attribute(arr : Array[String], attr : String) -> Bool =
+extern "js" fn check_includes_attribute(
+  arr : Array[String],
+  attr : String,
+) -> Bool =
   #|(arr, attr) => {
   #|  if (!arr || !Array.isArray(arr)) return false;
   #|  return arr.includes(attr);
@@ -359,7 +396,7 @@ pub fn get_target_with_inherit(element : @dom.Element) -> @dom.Element {
     None =>
       // Try to inherit hx-target from parent
       match should_inherit_attribute(element, target_attr) {
-        Some(inherited_selector) => {
+        Some(inherited_selector) =>
           // When inheriting "this" selector, "this" refers to the parent with the attribute
           // We need to find the parent element that has the attribute and return that
           if inherited_selector == "this" {
@@ -373,7 +410,6 @@ pub fn get_target_with_inherit(element : @dom.Element) -> @dom.Element {
               None => element
             }
           }
-        }
         None => element
       }
   }
@@ -381,7 +417,10 @@ pub fn get_target_with_inherit(element : @dom.Element) -> @dom.Element {
 
 ///|
 /// Find the first parent element (including the element itself) that has the given attribute
-extern "js" fn find_element_with_attribute(element : @dom.Element, attr_name : String) -> @dom.Element? =
+extern "js" fn find_element_with_attribute(
+  element : @dom.Element,
+  attr_name : String,
+) -> @dom.Element? =
   #|(element, attr_name) => {
   #|  let el = element;
   #|  while (el) {
@@ -426,7 +465,10 @@ extern "js" fn is_attr_true(elt : @dom.Element, attr : String) -> Bool =
 
 ///|
 /// Get the closest match value from data-hx-* prefix or hx-* attribute
-extern "js" fn get_closest_match_value(elt : @dom.Element, attr_name : String) -> String? =
+extern "js" fn get_closest_match_value(
+  elt : @dom.Element,
+  attr_name : String,
+) -> String? =
   #|(elt, attr_name) => {
   #|  const value = elt.getAttribute(attr_name);
   #|  if (value) return { $tag: 1, _0: value };
@@ -437,7 +479,10 @@ extern "js" fn get_closest_match_value(elt : @dom.Element, attr_name : String) -
 
 ///|
 /// Get closest element with attribute value
-extern "js" fn get_closest_attr_value(elt : @dom.Element, attribute : String) -> String? =
+extern "js" fn get_closest_attr_value(
+  elt : @dom.Element,
+  attribute : String,
+) -> String? =
   #|(elt, attribute) => {
   #|  const closest = elt.closest('[' + attribute + ']');
   #|  if (closest && closest.hasAttribute(attribute)) {
@@ -554,7 +599,9 @@ extern "js" fn get_closest_id_target(elt : @dom.Element) -> String? =
 
 ///|
 /// Get the indicator element(s) by selector
-extern "js" fn get_indicator_elements(elt : @dom.Element) -> Array[@dom.Element] =
+extern "js" fn get_indicator_elements(
+  elt : @dom.Element,
+) -> Array[@dom.Element] =
   #|(elt) => {
   #|  // Get hx-indicator attribute value
   #|  let indicatorAttr = 'hx-indicator';
@@ -586,7 +633,10 @@ extern "js" fn get_indicator_elements(elt : @dom.Element) -> Array[@dom.Element]
 
 ///|
 /// Resolve 'inherit' keyword in indicator selector by expanding it with parent's indicator
-extern "js" fn resolve_inherit(element : @dom.Element, selector : String) -> String =
+extern "js" fn resolve_inherit(
+  element : @dom.Element,
+  selector : String,
+) -> String =
   #|(element, selector) => {
   #|  const parts = selector.split(',').map(s => s.trim());
   #|  const results = [];
@@ -631,7 +681,10 @@ extern "js" fn get_trigger_event(elt : @dom.Element) -> String =
 
 ///|
 /// Resolve the modifier keywords in trigger attribute
-extern "js" fn resolve_trigger_modifiers(elt : @dom.Element, trigger : String) -> String =
+extern "js" fn resolve_trigger_modifiers(
+  elt : @dom.Element,
+  trigger : String,
+) -> String =
   #|(elt, trigger) => {
   #|  // If trigger doesn't contain modifiers, return as-is
   #|  if (!trigger.includes('changed') && !trigger.includes('once')) {
@@ -665,7 +718,10 @@ extern "js" fn resolve_trigger_modifiers(elt : @dom.Element, trigger : String) -
 
 ///|
 /// Check if the specified event should be filtered (used with changed/once modifiers)
-extern "js" fn should_filter_event(elt : @dom.Element, eventType : String) -> Bool =
+extern "js" fn should_filter_event(
+  elt : @dom.Element,
+  eventType : String,
+) -> Bool =
   #|(elt, eventType) => {
   #|  const trigger = elt.getAttribute('hx-trigger') || elt.getAttribute('data-hx-trigger');
   #|  if (!trigger) return false;
@@ -690,7 +746,10 @@ extern "js" fn should_filter_event(elt : @dom.Element, eventType : String) -> Bo
 
 ///|
 /// Mark event as triggered (used with 'once' modifier)
-extern "js" fn mark_event_triggered(elt : @dom.Element, eventType : String) -> Unit =
+extern "js" fn mark_event_triggered(
+  elt : @dom.Element,
+  eventType : String,
+) -> Unit =
   #|(elt, eventType) => {
   #|  const key = 'htmx-triggered-' + eventType;
   #|  elt[key] = true;
@@ -713,7 +772,10 @@ extern "js" fn get_swap_style_string(elt : @dom.Element) -> String =
 
 ///|
 /// Get disabled elements by selector
-extern "js" fn get_disabled_elements(elt : @dom.Element, selector : String) -> Array[@dom.Element] =
+extern "js" fn get_disabled_elements(
+  elt : @dom.Element,
+  selector : String,
+) -> Array[@dom.Element] =
   #|(elt, selector) => {
   #|  if (!selector) return [];
   #|
@@ -838,7 +900,10 @@ extern "js" fn get_include_attribute(elt : @dom.Element) -> String? =
 
 ///|
 /// Get elements matching the hx-include selector
-extern "js" fn get_included_elements(elt : @dom.Element, selector : String) -> Array[@dom.Element] =
+extern "js" fn get_included_elements(
+  elt : @dom.Element,
+  selector : String,
+) -> Array[@dom.Element] =
   #|(elt, selector) => {
   #|  if (!selector) return [];
   #|
@@ -979,7 +1044,10 @@ extern "js" fn has_boost_attribute(elt : @dom.Element) -> Bool =
 
 ///|
 /// Get the hx-on attribute for a specific event
-extern "js" fn get_hx_on_for_event(elt : @dom.Element, event : String) -> String? =
+extern "js" fn get_hx_on_for_event(
+  elt : @dom.Element,
+  event : String,
+) -> String? =
   #|(elt, event) => {
   #|  const hxOn = elt.getAttribute('hx-on::' + event) || elt.getAttribute('data-hx-on::' + event);
   #|  if (hxOn) {
@@ -1011,7 +1079,10 @@ extern "js" fn get_all_hx_on_attributes(elt : @dom.Element) -> @core.Any =
 
 ///|
 /// Get dataset attribute value
-extern "js" fn get_dataset_attribute(elt : @dom.Element, name : String) -> String? =
+extern "js" fn get_dataset_attribute(
+  elt : @dom.Element,
+  name : String,
+) -> String? =
   #|(elt, name) => {
   #|  if (elt.dataset && elt.dataset[name] !== undefined) {
   #|    return { $tag: 1, _0: String(elt.dataset[name]) };
@@ -1145,31 +1216,27 @@ pub fn find_method_url(element : @dom.Element) -> (String, String)? {
   // Check for hx-get
   match get_method_attribute(element, "hx-get") {
     Some(url) => Some(("GET", url))
-    None => {
+    None =>
       // Check for hx-post
       match get_method_attribute(element, "hx-post") {
         Some(url) => Some(("POST", url))
-        None => {
+        None =>
           // Check for hx-put
           match get_method_attribute(element, "hx-put") {
             Some(url) => Some(("PUT", url))
-            None => {
+            None =>
               // Check for hx-delete
               match get_method_attribute(element, "hx-delete") {
                 Some(url) => Some(("DELETE", url))
-                None => {
+                None =>
                   // Check for hx-patch
                   match get_method_attribute(element, "hx-patch") {
                     Some(url) => Some(("PATCH", url))
                     None => Option::None
                   }
-                }
               }
-            }
           }
-        }
       }
-    }
   }
 }
 

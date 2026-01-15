@@ -1,9 +1,0 @@
-{
-  "is-main": true,
-  "import": [
-    {
-      "path": "f4ah6o/htmx/src/htmx",
-      "alias": "htmx"
-    }
-  ]
-}

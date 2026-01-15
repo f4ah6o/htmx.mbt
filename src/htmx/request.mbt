@@ -245,13 +245,11 @@ extern "js" fn request_async_callback(
   #|(url, method_str, trigger_element, headers_map, callback) => {
   #|  const xhr = new XMLHttpRequest();
   #|  xhr.open(method_str, url, true);
-
   #|  // Set headers from map
   #|  const headers = headers_map;
   #|  for (const [key, value] of Object.entries(headers)) {
   #|    xhr.setRequestHeader(key, value);
   #|  }
-
   #|  xhr.onload = function() {
   #|    if (xhr.status >= 200 && xhr.status < 300) {
   #|      callback(xhr.responseText || '');
@@ -259,11 +257,9 @@ extern "js" fn request_async_callback(
   #|      callback(null);
   #|    }
   #|  };
-
   #|  xhr.onerror = function() {
   #|    callback(null);
   #|  };
-
   #|  xhr.send();
   #|}
 

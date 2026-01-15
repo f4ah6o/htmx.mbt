@@ -5,7 +5,9 @@ extern "js" fn log_debug(msg : String) -> Unit =
 
 ///|
 /// Convert values array (Array[(String, String)]) to JavaScript object
-extern "js" fn values_to_js_object(values : Array[(String, String)]) -> @core.Any =
+extern "js" fn values_to_js_object(
+  values : Array[(String, String)],
+) -> @core.Any =
   #|(values) => {
   #|  const obj = {};
   #|  if (values && values.buf) {
@@ -59,14 +61,22 @@ fn process_element_with_trigger(
     Some(el) => el.tagName()
     None => "none"
   }
-  log_debug("process_element_with_trigger called: element=" + element.tagName() + " trigger_el=" + trigger_tag)
+  log_debug(
+    "process_element_with_trigger called: element=" +
+    element.tagName() +
+    " trigger_el=" +
+    trigger_tag,
+  )
 
   // Find method and URL
   let method_url = find_method_url(element)
-  log_debug("method_url found: " + (match method_url {
-    Some(_) => "yes"
-    None => "no"
-  }))
+  log_debug(
+    "method_url found: " +
+    (match method_url {
+      Some(_) => "yes"
+      None => "no"
+    }),
+  )
   guard method_url is Some((method_str, url)) else { return }
 
   // Convert method string to HttpMethod
@@ -80,16 +90,21 @@ fn process_element_with_trigger(
 
   // Validate form before making request (pass trigger element for formnovalidate check)
   let validation_result = validate_element_with_trigger(element, trigger_el)
-  log_debug("validation_result: " + (match validation_result {
-    true => "passed"
-    false => "failed"
-  }))
+  log_debug(
+    "validation_result: " +
+    (match validation_result {
+      true => "passed"
+      false => "failed"
+    }),
+  )
   if not(validation_result) {
     return
   }
 
   // Get target and swap style (with inheritance support)
-  log_debug("About to call get_target_with_inherit on element: " + element.tagName())
+  log_debug(
+    "About to call get_target_with_inherit on element: " + element.tagName(),
+  )
   let target = get_target_with_inherit(element)
   log_debug("Target element: " + target.tagName())
   let swap_style = get_swap_style_with_inherit(element)
@@ -164,7 +179,9 @@ fn process_element_with_trigger(
   // Fire the config request event - this may modify parameters
   let headers : Map[String, String] = { "HX-Request": "true" }
   let headers_any = map_to_any(headers)
-  let config_allowed = fire_config_request_event(element, parameters, headers_any)
+  let config_allowed = fire_config_request_event(
+    element, parameters, headers_any,
+  )
 
   // If event was prevented, don't send request
   if not(config_allowed) {
@@ -225,7 +242,10 @@ extern "js" fn js_object_to_form_data(obj : @core.Any) -> @http.FormData =
 
 ///|
 /// Convert JavaScript object to query string and append to URL
-extern "js" fn js_object_to_query_string(url : String, obj : @core.Any) -> String =
+extern "js" fn js_object_to_query_string(
+  url : String,
+  obj : @core.Any,
+) -> String =
   #|(url, obj) => {
   #|  const queryParts = [];
   #|  if (obj && obj.buf && Array.isArray(obj.buf)) {
@@ -731,7 +751,12 @@ fn handle_click(evt : @core.Any) -> Unit {
   // Find htmx element and handle click trigger
   match find_htmx_element(target_el) {
     Some(htmx_el) => {
-      log_debug("handle_click: found htmx_el=" + htmx_el.tagName() + " trigger=" + get_trigger_event(htmx_el))
+      log_debug(
+        "handle_click: found htmx_el=" +
+        htmx_el.tagName() +
+        " trigger=" +
+        get_trigger_event(htmx_el),
+      )
       let trigger = get_trigger_event(htmx_el)
       if trigger == "click" || trigger == "load" {
         event.preventDefault()
@@ -980,11 +1005,9 @@ extern "js" fn init_htmx_process_api() -> Unit =
   #|  if (!window.htmx) {
   #|    window.htmx = {};
   #|  }
-
   #|  // htmx.process() - Process an element and its children for htmx attributes
   #|  window.htmx.process = function(element) {
   #|    if (!element) return;
-
   #|    // Process the element itself for load triggers
   #|    const trigger = element.getAttribute('hx-trigger') || element.getAttribute('data-hx-trigger');
   #|    if (trigger) {
@@ -1012,7 +1035,6 @@ extern "js" fn init_htmx_process_api() -> Unit =
   #|        }
   #|      }
   #|    }
-
   #|    // Process all descendants with hx-trigger
   #|    const elements = element.querySelectorAll('[hx-trigger], [data-hx-trigger]');
   #|    for (const el of elements) {
