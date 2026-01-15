@@ -4,12 +4,62 @@ extern "js" fn log_debug(msg : String) -> Unit =
   #|(msg) => console.log("[htmx.mbt DEBUG] " + msg)
 
 ///|
+/// Convert values array (Array[(String, String)]) to JavaScript object
+extern "js" fn values_to_js_object(values : Array[(String, String)]) -> @core.Any =
+  #|(values) => {
+  #|  const obj = {};
+  #|  if (values && values.buf) {
+  #|    for (let i = values.start || 0; i < (values.end || values.buf.length); i++) {
+  #|      const entry = values.buf[i];
+  #|      if (entry && entry._0 !== undefined) {
+  #|        obj[entry._0] = entry._1;
+  #|      }
+  #|    }
+  #|  }
+  #|  return obj;
+  #|}
+
+///|
+/// Merge source object into target object
+extern "js" fn merge_objects(target : @core.Any, source : @core.Any) -> Unit =
+  #|(target, source) => {
+  #|  if (target && source) {
+  #|    for (const key in source) {
+  #|      if (source.hasOwnProperty(key)) {
+  #|        target[key] = source[key];
+  #|      }
+  #|    }
+  #|  }
+  #|}
+
+///|
+/// Convert JavaScript object to Map
+extern "js" fn js_object_to_map(obj : @core.Any) -> Map[String, String] =
+  #|(obj) => {
+  #|  const result = {};
+  #|  if (obj) {
+  #|    for (const key in obj) {
+  #|      if (obj.hasOwnProperty(key)) {
+  #|        const val = obj[key];
+  #|        // Convert value to string
+  #|        result[key] = (val === null || val === undefined) ? '' : String(val);
+  #|      }
+  #|    }
+  #|  }
+  #|  return result;
+  #|}
+
+///|
 /// Process a single htmx element - perform request and swap (async for proper disabled-elt behavior)
 fn process_element_with_trigger(
   element : @dom.Element,
   trigger_el : @dom.Element?,
 ) -> Unit {
-  log_debug("process_element_with_trigger called: element=" + element.tagName())
+  let trigger_tag = match trigger_el {
+    Some(el) => el.tagName()
+    None => "none"
+  }
+  log_debug("process_element_with_trigger called: element=" + element.tagName() + " trigger_el=" + trigger_tag)
 
   // Find method and URL
   let method_url = find_method_url(element)
@@ -17,7 +67,16 @@ fn process_element_with_trigger(
     Some(_) => "yes"
     None => "no"
   }))
-  guard method_url is Some((http_method, url)) else { return }
+  guard method_url is Some((method_str, url)) else { return }
+
+  // Convert method string to HttpMethod
+  let http_method = match HttpMethod::from_string(method_str) {
+    Some(m) => m
+    None => {
+      log_debug("Unknown method: " + method_str)
+      return
+    }
+  }
 
   // Validate form before making request (pass trigger element for formnovalidate check)
   let validation_result = validate_element_with_trigger(element, trigger_el)
@@ -94,55 +153,105 @@ fn process_element_with_trigger(
   // Collect hx-vars/hx-vals from element and parents
   let expression_vars = get_expression_vars(Some(element), None)
 
+  // Fire htmx:config-request event to allow modification of parameters
+  // Collect input values for the event
+  let input_values = collect_input_values(element)
+  let parameters = values_to_js_object(input_values)
+  // Add hx-vars to parameters
+  let vars_any = map_to_any(expression_vars)
+  merge_objects(parameters, vars_any)
+
+  // Fire the config request event - this may modify parameters
+  let headers : Map[String, String] = { "HX-Request": "true" }
+  let headers_any = map_to_any(headers)
+  let config_allowed = fire_config_request_event(element, parameters, headers_any)
+
+  // If event was prevented, don't send request
+  if not(config_allowed) {
+    log_debug("htmx:config-request was prevented, aborting request")
+    // Hide indicators and re-enable elements before returning
+    if indicator_elements.length() > 0 {
+      hide_indicators(indicator_elements)
+    }
+    if disabled_elements.length() > 0 {
+      enable_elements(disabled_elements)
+    }
+    return
+  }
+
   // Handle form data for POST/PUT/PATCH vs GET/DELETE
   if http_method.has_body() {
-    // Collect form data for methods that have a body
-    let form_data = get_form_data(element)
-    // Append hx-vars values (vars override form values)
-    match form_data {
-      Some(fd) => {
-        append_vars_to_form_data(fd, map_to_any(expression_vars))
-        request_with_form_async(
-          url,
-          http_method,
-          Some(fd),
-          Some(element),
-          callback,
-        )
-      }
-      None => {
-        // No form data, collect input values and create FormData with vars
-        let vars_any = map_to_any(expression_vars)
-        let form_data_with_inputs = create_form_data_from_inputs_and_vars(
-          element, vars_any,
-        )
-        request_with_form_async(
-          url,
-          http_method,
-          Some(form_data_with_inputs),
-          Some(element),
-          callback,
-        )
-      }
-    }
+    // Use modified parameters directly - convert JavaScript object to FormData
+    let form_data_from_params = js_object_to_form_data(parameters)
+    request_with_form_async(
+      url,
+      http_method,
+      Some(form_data_from_params),
+      Some(element),
+      callback,
+    )
   } else {
-    // For GET/DELETE, append form values as query params
-    let actual_url = match get_form_data(element) {
-      Some(fd) => {
-        // Collect values and append to URL
-        let values = collect_input_values(element)
-        let query = values_to_query_string(values)
-        let base_url = append_query_string(url, query)
-        // Append hx-vars values (vars override form values)
-        append_vars_to_url(base_url, map_to_any(expression_vars))
-      }
-      None =>
-        // No form data, just append vars
-        append_vars_to_url(url, map_to_any(expression_vars))
-    }
+    // For GET/DELETE, append modified parameters as query params
+    let actual_url = js_object_to_query_string(url, parameters)
     request_async(actual_url, http_method, Some(element), callback)
   }
 }
+
+///|
+/// Convert JavaScript object (potentially modified by event handlers) to FormData
+extern "js" fn js_object_to_form_data(obj : @core.Any) -> @http.FormData =
+  #|(obj) => {
+  #|  const fd = new FormData();
+  #|  if (obj && obj.buf && Array.isArray(obj.buf)) {
+  #|    // Moonbit Map structure with array buffer
+  #|    const buf = obj.buf;
+  #|    for (let i = obj.start || 0; i < (obj.end || buf.length); i++) {
+  #|      const entry = buf[i];
+  #|      if (entry && entry._0 !== undefined) {
+  #|        fd.append(entry._0, entry._1);
+  #|      }
+  #|    }
+  #|  } else if (obj && typeof obj === 'object') {
+  #|    // Plain object - iterate over keys
+  #|    for (const key in obj) {
+  #|      if (obj.hasOwnProperty(key) && key !== 'buf' && key !== 'start' && key !== 'end') {
+  #|        const val = obj[key];
+  #|        fd.append(key, val);
+  #|      }
+  #|    }
+  #|  }
+  #|  return fd;
+  #|}
+
+///|
+/// Convert JavaScript object to query string and append to URL
+extern "js" fn js_object_to_query_string(url : String, obj : @core.Any) -> String =
+  #|(url, obj) => {
+  #|  const queryParts = [];
+  #|  if (obj && obj.buf && Array.isArray(obj.buf)) {
+  #|    // Moonbit Map structure with array buffer
+  #|    const buf = obj.buf;
+  #|    for (let i = obj.start || 0; i < (obj.end || buf.length); i++) {
+  #|      const entry = buf[i];
+  #|      if (entry && entry._0 !== undefined) {
+  #|        queryParts.push(encodeURIComponent(entry._0) + '=' + encodeURIComponent(entry._1));
+  #|      }
+  #|    }
+  #|  } else if (obj && typeof obj === 'object') {
+  #|    // Plain object - iterate over keys
+  #|    for (const key in obj) {
+  #|      if (obj.hasOwnProperty(key) && key !== 'buf' && key !== 'start' && key !== 'end') {
+  #|        const val = obj[key];
+  #|        queryParts.push(encodeURIComponent(key) + '=' + encodeURIComponent(val));
+  #|      }
+  #|    }
+  #|  }
+  #|  if (queryParts.length > 0) {
+  #|    const separator = url.includes('?') ? '&' : '?';
+  #|    return url + separator + queryParts.join('&');
+  #|  }
+  #|  return url;
+  #|}
 
 ///|
 /// Create a callback function for handling async XHR response
@@ -753,24 +862,32 @@ extern "js" fn init_hx_on_delegation(doc_target : @core.Any) -> Unit =
   #|      for (let i = 0; i < attrs.length; i++) {
   #|        const attrName = attrs[i].name;
   #|
-  #|        // Check if this is an hx-on attribute
+  #|        // Check if this is an hx-on attribute (check :: and -- before : and -)
   #|        let eventSpec = null;
-  #|        if (attrName.startsWith('hx-on:')) {
+  #|        if (attrName.startsWith('hx-on::')) {
+  #|          // :: shorthand for htmx: namespace
+  #|          eventSpec = 'htmx:' + attrName.slice(8); // after 'hx-on::'
+  #|        } else if (attrName.startsWith('hx-on:')) {
   #|          eventSpec = attrName.slice(6); // after 'hx-on:'
+  #|        } else if (attrName.startsWith('hx-on--')) {
+  #|          // -- shorthand for htmx: namespace
+  #|          eventSpec = 'htmx:' + attrName.slice(8); // after 'hx-on--'
   #|        } else if (attrName.startsWith('hx-on-')) {
   #|          eventSpec = attrName.slice(6); // after 'hx-on-'
+  #|        } else if (attrName.startsWith('data-hx-on::')) {
+  #|          eventSpec = 'htmx:' + attrName.slice(13); // after 'data-hx-on::'
   #|        } else if (attrName.startsWith('data-hx-on:')) {
   #|          eventSpec = attrName.slice(11); // after 'data-hx-on:'
+  #|        } else if (attrName.startsWith('data-hx-on--')) {
+  #|          eventSpec = 'htmx:' + attrName.slice(13); // after 'data-hx-on--'
   #|        } else if (attrName.startsWith('data-hx-on-')) {
   #|          eventSpec = attrName.slice(11); // after 'data-hx-on-'
   #|        }
   #|
   #|        if (eventSpec !== null) {
-  #|          // Expand :: and -- shorthands to htmx:
-  #|          if (eventSpec.startsWith('::')) {
-  #|            eventSpec = 'htmx:' + eventSpec.slice(2);
-  #|          } else if (eventSpec.startsWith('--')) {
-  #|            eventSpec = 'htmx:' + eventSpec.slice(2);
+  #|          // Convert htmx-* to htmx:* (for hx-on-htmx-* style)
+  #|          if (eventSpec.startsWith('htmx-')) {
+  #|            eventSpec = 'htmx:' + eventSpec.slice(5);
   #|          }
   #|
   #|          // Check if this handler matches the current event
@@ -848,6 +965,9 @@ pub fn htmx_init() -> Unit {
   // Process load triggers
   process_load_triggers()
 
+  // Process revealed triggers
+  process_revealed_triggers()
+
   // Expose htmx.process API for test compatibility
   init_htmx_process_api()
 }
@@ -875,6 +995,20 @@ extern "js" fn init_htmx_process_api() -> Unit =
   #|          const event = new MouseEvent('click', { bubbles: true, cancelable: true });
   #|          element.dispatchEvent(event);
   #|          break;
+  #|        } else if (part === 'revealed' || part.startsWith('revealed ')) {
+  #|          // Check if element is in viewport and trigger revealed
+  #|          const rect = element.getBoundingClientRect();
+  #|          const isInViewport = (
+  #|            rect.top >= 0 &&
+  #|            rect.left >= 0 &&
+  #|            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+  #|            rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  #|          );
+  #|          if (isInViewport) {
+  #|            const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|            element.dispatchEvent(event);
+  #|          }
+  #|          break;
   #|        }
   #|      }
   #|    }
@@ -890,9 +1024,82 @@ extern "js" fn init_htmx_process_api() -> Unit =
   #|            const event = new MouseEvent('click', { bubbles: true, cancelable: true });
   #|            el.dispatchEvent(event);
   #|            break;
+  #|          } else if (part === 'revealed' || part.startsWith('revealed ')) {
+  #|            // Check if element is in viewport and trigger revealed
+  #|            const rect = el.getBoundingClientRect();
+  #|            const isInViewport = (
+  #|              rect.top >= 0 &&
+  #|              rect.left >= 0 &&
+  #|              rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+  #|              rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  #|            );
+  #|            if (isInViewport) {
+  #|              const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|              el.dispatchEvent(event);
+  #|            }
+  #|            break;
   #|          }
   #|        }
   #|      }
   #|    }
   #|  };
+  #|}
+
+///|
+/// Process elements with hx-trigger='revealed'
+extern "js" fn process_revealed_triggers() -> Unit =
+  #|() => {
+  #|  // Find all elements with revealed trigger
+  #|  const revealedElements = document.querySelectorAll('[hx-trigger*="revealed"], [data-hx-trigger*="revealed"]');
+  #|
+  #|  // Function to check if element is in viewport
+  #|  const isInViewport = function(el) {
+  #|    const rect = el.getBoundingClientRect();
+  #|    return (
+  #|      rect.top >= 0 &&
+  #|      rect.left >= 0 &&
+  #|      rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+  #|      rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  #|    );
+  #|  };
+  #|
+  #|  // Function to trigger a revealed element
+  #|  const triggerRevealed = function(el) {
+  #|    // Mark as processed to avoid duplicate triggers
+  #|    if (el.hasAttribute('data-revealed-triggered')) return;
+  #|    el.setAttribute('data-revealed-triggered', 'true');
+  #|
+  #|    // Trigger click event which will process the htmx request
+  #|    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|    el.dispatchEvent(event);
+  #|  };
+  #|
+  #|  // Process elements that are already visible
+  #|  for (const el of revealedElements) {
+  #|    const trigger = el.getAttribute('hx-trigger') || el.getAttribute('data-hx-trigger');
+  #|    if (trigger && trigger.includes('revealed')) {
+  #|      // Check if element is currently in viewport
+  #|      if (isInViewport(el)) {
+  #|        triggerRevealed(el);
+  #|      }
+  #|    }
+  #|  }
+  #|
+  #|  // Set up IntersectionObserver for elements not yet in viewport
+  #|  const observer = new IntersectionObserver(function(entries) {
+  #|    for (const entry of entries) {
+  #|      if (entry.isIntersecting) {
+  #|        const el = entry.target;
+  #|        triggerRevealed(el);
+  #|        observer.unobserve(el);
+  #|      }
+  #|    }
+  #|  }, { threshold: 0 });
+  #|
+  #|  // Observe elements that aren't already triggered
+  #|  for (const el of revealedElements) {
+  #|    if (!el.hasAttribute('data-revealed-triggered')) {
+  #|      observer.observe(el);
+  #|    }
+  #|  }
   #|}

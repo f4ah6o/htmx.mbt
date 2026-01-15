@@ -2,6 +2,16 @@
 /// Various attribute helpers for htmx
 
 ///|
+/// Get substring after a given position
+extern "js" fn substring_after(s : String, start : Int) -> String =
+  #|(s, start) => { return s.substring(start); }
+
+///|
+/// Check if element matches CSS selector
+extern "js" fn element_matches(el : @dom.Element, css : String) -> Bool =
+  #|(el, css) => el.matches(css)
+
+///|
 /// Get attribute with data-hx- prefix fallback
 pub fn get_attribute_with_prefix(elt : @dom.Element, attr : String) -> String? {
   let result = elt.getAttribute(attr)
@@ -56,6 +66,12 @@ pub fn hx_delete() -> String { "hx-delete" }
 
 ///|
 pub fn hx_patch() -> String { "hx-patch" }
+
+///|
+/// Get all htmx method attribute names
+pub fn get_hx_methods() -> Array[String] {
+  ["hx-get", "hx-post", "hx-put", "hx-delete", "hx-patch"]
+}
 
 ///|
 pub fn hx_trigger() -> String { "hx-trigger" }
@@ -150,16 +166,17 @@ fn parse_next_target(element : @dom.Element, selector : String) -> @dom.Element?
   } else {
     let css = substring_after(selector, 5)
     match element.nextElementSibling() {
-      Some(next) => next.matches(css) ? Some(next) : None
+      Some(next) => {
+        if element_matches(next, css) {
+          Some(next)
+        } else {
+          None
+        }
+      }
       None => None
     }
   }
 }
-
-///|
-/// Get substring after a prefix
-extern "js" fn substring_after(s : String, prefix : String) -> String =
-  #|(s, prefix) => s.substring(prefix.length)
 
 ///|
 /// Get targets by selector (handles extended syntax like "closest", "find", "next", "global")
@@ -178,10 +195,7 @@ pub fn find_targets_by_selector(
     }
   } else if selector.has_prefix("find ") {
     let css = substring_after(selector, 5)
-    match element.querySelectorAll(css) {
-      Some(nodeList) => list_to_array(nodeList)
-      None => []
-    }
+    element.querySelectorAll(css)
   } else if selector.has_prefix("next") {
     match parse_next_target(element, selector) {
       Some(el) => [el]
@@ -189,22 +203,11 @@ pub fn find_targets_by_selector(
     }
   } else if selector.has_prefix("global ") {
     let css = substring_after(selector, 7)
-    match @dom.document().querySelectorAll(css) {
-      Some(nodeList) => list_to_array(nodeList)
-      None => []
-    }
+    @dom.document().querySelectorAll(css)
   } else {
-    match @dom.document().querySelectorAll(selector) {
-      Some(nodeList) => list_to_array(nodeList)
-      None => []
-    }
+    @dom.document().querySelectorAll(selector)
   }
 }
-
-///|
-/// Convert NodeList to Array
-extern "js" fn list_to_array(nodeList : @core.Any) -> Array[@dom.Element] =
-  #|(nodeList) => Array.from(nodeList || [])
 
 ///|
 /// Get parent element
@@ -220,7 +223,7 @@ pub fn get_hx_inherit(el : @dom.Element) -> String? {
 ///|
 /// Parse hx-inherit value into array
 fn parse_hx_inherit(value : String) -> Array[String] {
-  let trimmed = value.trim()
+  let trimmed = value.trim().to_string()
   if trimmed == "all" {
     ["*"]
   } else if trimmed == "none" {
@@ -243,7 +246,7 @@ extern "js" fn get_disable_inheritance() -> Bool =
 
 ///|
 /// Check if hx-inherit array contains '*' (inherit all)
-extern "js" fn check_inherits_all(arr : @core.Any) -> Bool =
+extern "js" fn check_inherits_all(arr : Array[String]) -> Bool =
   #|(arr) => {
   #|  if (!arr || !Array.isArray(arr)) return false;
   #|  return arr.includes('*');
@@ -251,7 +254,7 @@ extern "js" fn check_inherits_all(arr : @core.Any) -> Bool =
 
 ///|
 /// Check if hx-inherit array includes a specific attribute
-extern "js" fn check_includes_attribute(arr : @core.Any, attr : String) -> Bool =
+extern "js" fn check_includes_attribute(arr : Array[String], attr : String) -> Bool =
   #|(arr, attr) => {
   #|  if (!arr || !Array.isArray(arr)) return false;
   #|  return arr.includes(attr);
@@ -411,6 +414,7 @@ pub fn get_swap_style_with_inherit(element : @dom.Element) -> SwapStyle {
           }
       }
   }
+}
 
 ///|
 /// Check if attribute value is true (handles various true representations)
@@ -582,7 +586,7 @@ extern "js" fn get_indicator_elements(elt : @dom.Element) -> Array[@dom.Element]
 
 ///|
 /// Resolve 'inherit' keyword in indicator selector by expanding it with parent's indicator
-extern "js" fn resolve_inherit(element : @dom.Element, selector : String) -> String {
+extern "js" fn resolve_inherit(element : @dom.Element, selector : String) -> String =
   #|(element, selector) => {
   #|  const parts = selector.split(',').map(s => s.trim());
   #|  const results = [];
@@ -622,12 +626,12 @@ extern "js" fn get_trigger_event(elt : @dom.Element) -> String =
   #|    const eventPart = parts.find(p => !p.startsWith('changed.'));
   #|    return eventPart || 'click';  // Default to click if not specified
   #|  }
-  #|  return 'get';  // Default for GET/POST/etc without trigger
+  #|  return 'click';  // Default to click for GET/POST/etc without trigger
   #|}
 
 ///|
 /// Resolve the modifier keywords in trigger attribute
-extern "js" fn resolve_trigger_modifiers(elt : @dom.Element, trigger : String) -> String {
+extern "js" fn resolve_trigger_modifiers(elt : @dom.Element, trigger : String) -> String =
   #|(elt, trigger) => {
   #|  // If trigger doesn't contain modifiers, return as-is
   #|  if (!trigger.includes('changed') && !trigger.includes('once')) {
@@ -1124,3 +1128,66 @@ extern "js" fn get_disable_attribute(elt : @dom.Element) -> Bool =
   #|  const disable = elt.getAttribute('hx-disable');
   #|  return disable === '' || disable === 'true';
   #|}
+
+///|
+/// Get method attribute value as string (for finding htmx method attributes)
+pub fn get_method_attribute(element : @dom.Element, attr : String) -> String? {
+  match element.getAttribute(attr) {
+    Some(url) => Some(url)
+    None => element.getAttribute(with_data_prefix(attr))
+  }
+}
+
+///|
+/// Find htmx method URL attribute on element (e.g., hx-get, hx-post, etc.)
+/// Returns (method, url) as tuple strings if found, None otherwise
+pub fn find_method_url(element : @dom.Element) -> (String, String)? {
+  // Check for hx-get
+  match get_method_attribute(element, "hx-get") {
+    Some(url) => Some(("GET", url))
+    None => {
+      // Check for hx-post
+      match get_method_attribute(element, "hx-post") {
+        Some(url) => Some(("POST", url))
+        None => {
+          // Check for hx-put
+          match get_method_attribute(element, "hx-put") {
+            Some(url) => Some(("PUT", url))
+            None => {
+              // Check for hx-delete
+              match get_method_attribute(element, "hx-delete") {
+                Some(url) => Some(("DELETE", url))
+                None => {
+                  // Check for hx-patch
+                  match get_method_attribute(element, "hx-patch") {
+                    Some(url) => Some(("PATCH", url))
+                    None => Option::None
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+/// Get hx-disabled-elt attribute value from element
+pub fn get_disabled_elt(elt : @dom.Element) -> String? {
+  get_attribute_with_prefix(elt, hx_disabled_elt())
+}
+
+///|
+/// Find the closest element with htmx attributes
+pub fn find_htmx_element(target_el : @dom.Element) -> @dom.Element? {
+  if has_htmx_attribute(target_el) {
+    Some(target_el)
+  } else {
+    match get_parent_element(target_el) {
+      Some(parent) => find_htmx_element(parent)
+      None => Option::None
+    }
+  }
+}

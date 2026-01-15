@@ -48,6 +48,19 @@ pub fn HttpMethod::from_attr(attr : String) -> HttpMethod? {
 }
 
 ///|
+/// Parse method from HTTP method string (GET, POST, etc.)
+pub fn HttpMethod::from_string(method : String) -> HttpMethod? {
+  match method {
+    "GET" => Some(Get)
+    "POST" => Some(Post)
+    "PUT" => Some(Put)
+    "DELETE" => Some(Delete)
+    "PATCH" => Some(Patch)
+    _ => Option::None
+  }
+}
+
+///|
 /// XMLHttpRequest FFI bindings for Sinon compatibility
 extern "js" fn create_xhr() -> @core.Any =
   #|() => new XMLHttpRequest()
@@ -150,6 +163,76 @@ pub fn request_with_form_sync(
 }
 
 ///|
+/// Fire htmx:config-request event and return potentially modified parameters
+pub extern "js" fn fire_config_request_event(
+  element : @dom.Element,
+  parameters : @core.Any,
+  headers : @core.Any,
+) -> Bool =
+  #|(element, parameters, headers) => {
+  #|  // Create a plain JavaScript object for parameters
+  #|  const plainParams = {};
+  #|  if (parameters && parameters.buf && Array.isArray(parameters.buf)) {
+  #|    // Moonbit Map structure
+  #|    for (let i = parameters.start || 0; i < (parameters.end || parameters.buf.length); i++) {
+  #|      const entry = parameters.buf[i];
+  #|      if (entry && entry._0 !== undefined) {
+  #|        plainParams[entry._0] = entry._1;
+  #|      }
+  #|    }
+  #|  } else if (parameters && typeof parameters === 'object') {
+  #|    for (const key in parameters) {
+  #|      if (parameters.hasOwnProperty(key)) {
+  #|        plainParams[key] = parameters[key];
+  #|      }
+  #|    }
+  #|  }
+  #|  // Create a plain JavaScript object for headers
+  #|  const plainHeaders = {};
+  #|  if (headers && headers.buf && Array.isArray(headers.buf)) {
+  #|    // Moonbit Map structure
+  #|    for (let i = headers.start || 0; i < (headers.end || headers.buf.length); i++) {
+  #|      const entry = headers.buf[i];
+  #|      if (entry && entry._0 !== undefined) {
+  #|        plainHeaders[entry._0] = entry._1;
+  #|      }
+  #|    }
+  #|  } else if (headers && typeof headers === 'object') {
+  #|    for (const key in headers) {
+  #|      if (headers.hasOwnProperty(key)) {
+  #|        plainHeaders[key] = headers[key];
+  #|      }
+  #|    }
+  #|  }
+  #|  const evt = new CustomEvent('htmx:config-request', {
+  #|    bubbles: true,
+  #|    cancelable: true,
+  #|    detail: {
+  #|      parameters: plainParams,
+  #|      headers: plainHeaders,
+  #|      target: element
+  #|    }
+  #|  });
+  #|  const result = element.dispatchEvent(evt);
+  #|  // Copy modified parameters back to the original parameters object
+  #|  // Clear the buf and add new entries
+  #|  if (parameters && parameters.buf !== undefined) {
+  #|    parameters.buf = [];
+  #|    parameters.start = 0;
+  #|    let idx = 0;
+  #|    for (const key in plainParams) {
+  #|      if (plainParams.hasOwnProperty(key)) {
+  #|        parameters.buf[idx] = { _0: key, _1: plainParams[key] };
+  #|        idx++;
+  #|      }
+  #|    }
+  #|    parameters.end = idx;
+  #|  }
+  #|  // Return false if event was prevented
+  #|  return result;
+  #|}
+
+///|
 /// Perform async XHR request with callback (for proper disabled-elt behavior)
 /// The callback receives a String? (the response text or null on error)
 extern "js" fn request_async_callback(
@@ -162,13 +245,13 @@ extern "js" fn request_async_callback(
   #|(url, method_str, trigger_element, headers_map, callback) => {
   #|  const xhr = new XMLHttpRequest();
   #|  xhr.open(method_str, url, true);
-  #|
+
   #|  // Set headers from map
   #|  const headers = headers_map;
   #|  for (const [key, value] of Object.entries(headers)) {
   #|    xhr.setRequestHeader(key, value);
   #|  }
-  #|
+
   #|  xhr.onload = function() {
   #|    if (xhr.status >= 200 && xhr.status < 300) {
   #|      callback(xhr.responseText || '');
@@ -176,11 +259,11 @@ extern "js" fn request_async_callback(
   #|      callback(null);
   #|    }
   #|  };
-  #|
+
   #|  xhr.onerror = function() {
   #|    callback(null);
   #|  };
-  #|
+
   #|  xhr.send();
   #|}
 
