@@ -1482,12 +1482,40 @@ extern "js" fn init_htmx_process_api() -> Unit =
   #|      }
   #|    }
   #|  };
+
+  #|  // Initialize _internal object
+  #|  if (!window.htmx._internal) {
+  #|    window.htmx._internal = {};
+  #|  }
+
+  #|  // Expose cleanup function for test framework
+  #|  window.htmx._internal.cleanupRevealedObservers = function() {
+  #|    if (window.htmx._internal.intersectionObservers) {
+  #|      const observers = window.htmx._internal.intersectionObservers;
+  #|      for (const observer of observers) {
+  #|        try {
+  #|          observer.disconnect();
+  #|        } catch (e) {
+  #|          // Ignore errors during cleanup
+  #|        }
+  #|      }
+  #|      observers.clear();
+  #|    }
+  #|  };
   #|}
 
 ///|
 /// Process elements with hx-trigger='revealed'
 extern "js" fn process_revealed_triggers() -> Unit =
   #|() => {
+  #|  // Initialize internal storage for observer tracking
+  #|  if (typeof window !== 'undefined' && window.htmx) {
+  #|    if (!window.htmx._internal) window.htmx._internal = {};
+  #|    if (!window.htmx._internal.intersectionObservers) {
+  #|      window.htmx._internal.intersectionObservers = new Set();
+  #|    }
+  #|  }
+  #|
   #|  // Find all elements with revealed trigger
   #|  const revealedElements = document.querySelectorAll('[hx-trigger*="revealed"], [data-hx-trigger*="revealed"]');
   #|
@@ -1535,10 +1563,65 @@ extern "js" fn process_revealed_triggers() -> Unit =
   #|    }
   #|  }, { threshold: 0 });
   #|
+  #|  // Track the observer for cleanup
+  #|  if (window.htmx && window.htmx._internal && window.htmx._internal.intersectionObservers) {
+  #|    window.htmx._internal.intersectionObservers.add(observer);
+  #|  }
+  #|
   #|  // Observe elements that aren't already triggered
   #|  for (const el of revealedElements) {
   #|    if (!el.hasAttribute('data-revealed-triggered')) {
   #|      observer.observe(el);
+  #|    }
+  #|  }
+  #|
+  #|  // Set up MutationObserver to detect element removal and unobserve them
+  #|  const cleanupObserver = new MutationObserver(function(mutations) {
+  #|    for (const mutation of mutations) {
+  #|      for (const node of mutation.removedNodes) {
+  #|        if (node.nodeType === 1) { // Element node
+  #|          // Check if this was a revealed element
+  #|          if (node.hasAttribute && node.hasAttribute('data-revealed-triggered')) {
+  #|            observer.unobserve(node);
+  #|          }
+  #|          // Check descendants
+  #|          const revealedChildren = node.querySelectorAll && node.querySelectorAll('[data-revealed-triggered]');
+  #|          if (revealedChildren) {
+  #|            for (const el of revealedChildren) {
+  #|              observer.unobserve(el);
+  #|            }
+  #|          }
+  #|        }
+  #|      }
+  #|    }
+  #|  });
+  #|
+  #|  // Start observing the document for removals
+  #|  if (document.body) {
+  #|    cleanupObserver.observe(document.body, { childList: true, subtree: true });
+  #|  }
+  #|
+  #|  // Track the cleanup observer as well
+  #|  if (window.htmx && window.htmx._internal && window.htmx._internal.intersectionObservers) {
+  #|    window.htmx._internal.intersectionObservers.add(cleanupObserver);
+  #|  }
+  #|}
+
+///|
+/// Clean up all IntersectionObserver instances to prevent memory leaks
+extern "js" fn cleanup_revealed_observers() -> Unit =
+  #|() => {
+  #|  if (typeof window !== 'undefined' && window.htmx && window.htmx._internal) {
+  #|    const observers = window.htmx._internal.intersectionObservers;
+  #|    if (observers && observers.size > 0) {
+  #|      for (const observer of observers) {
+  #|        try {
+  #|          observer.disconnect();
+  #|        } catch (e) {
+  #|          // Ignore errors during cleanup
+  #|        }
+  #|      }
+  #|      observers.clear();
   #|    }
   #|  }
   #|}
