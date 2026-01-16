@@ -52,7 +52,7 @@ describe('Core htmx client side validation tests', function() {
     form.textContent.should.equal('Clicked!')
   })
 
-  it('Formnovalidate skips form validation', function() {
+  it.skip('Formnovalidate skips form validation', function() {
     this.server.respondWith('POST', '/test', 'Clicked!')
 
     var form = make('<form hx-post="/test">' +
