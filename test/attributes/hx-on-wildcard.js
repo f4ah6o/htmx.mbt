@@ -141,7 +141,6 @@ describe('hx-on:* attribute', function() {
   })
 
   it('should fire when triggered by revealed', function() {
-    this.timeout(5000) // Add timeout to prevent infinite hangs
     this.server.respondWith('POST', '/test', 'test')
     make("<div hx-trigger='revealed' hx-post='/test' hx-on:htmx:config-request='foo = true' style='position: fixed; top: 1px; left: 1px; border: 3px solid red'></div>")
     window.foo.should.equal(true)
