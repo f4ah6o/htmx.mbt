@@ -45,6 +45,15 @@ function getWorkArea() {
 function clearWorkArea() {
   var workArea = getWorkArea()
   if (workArea) workArea.innerHTML = ''
+
+  // Clean up IntersectionObservers to prevent test runner hangs
+  if (window.htmx && window.htmx._internal && window.htmx._internal.cleanupRevealedObservers) {
+    try {
+      window.htmx._internal.cleanupRevealedObservers()
+    } catch (e) {
+      console.warn('Failed to cleanup revealed observers:', e)
+    }
+  }
 }
 
 function removeWhiteSpace(str) {

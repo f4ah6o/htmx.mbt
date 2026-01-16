@@ -87,8 +87,6 @@ const config = {
     '!test/attributes/hx-boost.js',
     '!test/attributes/hx-preserve.js',
     '!test/attributes/hx-ext.js',
-    // Skip alphabet tests
-    '!test/attributes/hx-on-wildcard.js',
     // Enable hx-vars tests for TDD
     // '!test/attributes/hx-vars.js',
     // Skip tests that depend on allowEval and hx-vals
