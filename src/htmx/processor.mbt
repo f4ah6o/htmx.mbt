@@ -786,9 +786,38 @@ extern "js" fn get_event_target(evt : @core.Any) -> @dom.Element =
   #|}
 
 ///|
+/// Get the original event target (evt.target) directly
+/// This is needed to detect submit buttons for formnovalidate handling
+/// Returns the element or undefined if not found
+extern "js" fn get_original_event_target(evt : @core.Any) -> @dom.Element =
+  #|(evt) => {
+  #|  const target = evt.target;
+  #|  if (target && target.nodeType === 1) {
+  #|    return target;
+  #|  }
+  #|  return undefined;
+  #|}
+
+///|
+/// Check if an element is valid (not undefined or null)
+extern "js" fn is_valid_element(el : @dom.Element) -> Bool =
+  #|(el) => {
+  #|  return el !== undefined && el !== null;
+  #|}
+
+///|
 /// Check if element is a submit button
 extern "js" fn is_submit_button(el : @dom.Element) -> Bool =
-  #|(el) => el && el.tagName === 'BUTTON' && (el.type === 'submit' || !el.type)
+  #|(el) => {
+  #|  if (!el) return false;
+  #|  if (el.tagName === 'BUTTON') {
+  #|    return el.type === 'submit' || !el.type;
+  #|  }
+  #|  if (el.tagName === 'INPUT') {
+  #|    return el.type === 'submit' || el.type === 'image';
+  #|  }
+  #|  return false;
+  #|}
 
 ///|
 /// Find the closest form ancestor using FFI
@@ -993,6 +1022,54 @@ fn handle_click(evt : @core.Any) -> Unit {
   let event : @event.Event = @core.identity(evt)
   let target_el = get_event_target(evt)
   log_debug("handle_click: target_el=" + target_el.tagName())
+
+  // NEW: Check the original event target for submit button handling
+  // This is needed for formnovalidate support because get_event_target
+  // returns the first htmx element in the path (e.g., the form), not the
+  // actual clicked element (e.g., the submit button)
+  let original_target = get_original_event_target(evt)
+  if is_valid_element(original_target) {
+    // Check if the original target is a submit button inside an htmx form
+    if is_submit_button(original_target) {
+      if has_containing_form(original_target) {
+        let form = find_closest_form(original_target)
+        // Check if the button itself has an htmx method attribute
+        match find_method_url(original_target) {
+          Some(_) =>
+            // Button has its own htmx request, let it be processed below
+            ()
+          None =>
+            // Button doesn't have htmx, check if form does
+            match find_method_url(form) {
+              Some(_) => {
+                // Form has htmx - submit the form with the button as submitter
+                event.preventDefault()
+                // Check for delay modifier
+                let delay_ms = get_delay_from_trigger(form)
+                if delay_ms > 0 {
+                  process_element_with_delay(
+                    form, Some(original_target), Some(evt), delay_ms,
+                  )
+                  return
+                }
+                // Check for throttle modifier
+                let throttle_ms = get_throttle_from_trigger(form)
+                if throttle_ms > 0 {
+                  process_element_with_throttle(
+                    form, Some(original_target), Some(evt), throttle_ms,
+                  )
+                  return
+                }
+                // Pass original_target (button) as trigger_el for formnovalidate
+                process_element_with_trigger(form, Some(original_target), Some(evt))
+                return
+              }
+              None => ()
+            }
+        }
+      }
+    }
+  }
 
   // Check if this is an internal delayed trigger (from setTimeout)
   // If delay is pending, this is the delayed trigger, so process it
