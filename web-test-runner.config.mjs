@@ -93,7 +93,7 @@ const config = {
     // Enable hx-vars tests for TDD
     // '!test/attributes/hx-vars.js',
     // Skip tests that depend on allowEval and hx-vals
-    '!test/attributes/hx-vals.js',
+    // '!test/attributes/hx-vals.js',  // ISSUE #64: delay trigger test failing
     // Skip tests that depend on full AJAX/swap implementation
     '!test/attributes/hx-confirm.js',
     // '!test/attributes/hx-delete.js',  // enabled - passing

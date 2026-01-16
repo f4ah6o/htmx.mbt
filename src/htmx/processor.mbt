@@ -43,9 +43,20 @@ extern "js" fn merge_objects(target : @core.Any, source : @core.Any) -> Unit =
   #|(target, source) => {
   #|  console.log('[htmx.mbt PROCESSOR] merge_objects - target before:', JSON.stringify(target), 'source:', JSON.stringify(source));
   #|  if (target && source) {
-  #|    for (const key in source) {
-  #|      if (source.hasOwnProperty(key)) {
-  #|        target[key] = source[key];
+  #|    // Handle MoonBit Map structure: {buf: [{_0: key, _1: value}, ...], start, end}
+  #|    if (source.buf && Array.isArray(source.buf)) {
+  #|      for (let i = source.start || 0; i < (source.end || source.buf.length); i++) {
+  #|        const entry = source.buf[i];
+  #|        if (entry && entry._0 !== undefined) {
+  #|          target[entry._0] = entry._1;
+  #|        }
+  #|      }
+  #|    } else {
+  #|      // Handle plain JavaScript object
+  #|      for (const key in source) {
+  #|        if (source.hasOwnProperty(key)) {
+  #|          target[key] = source[key];
+  #|        }
   #|      }
   #|    }
   #|  }
