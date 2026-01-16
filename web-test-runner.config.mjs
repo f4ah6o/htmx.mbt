@@ -78,7 +78,6 @@ const config = {
     '!test/core/extension-swap.js',
     // Skip tests that fail due to page navigation issues
     '!test/core/security.js',
-    '!test/core/shadowdom.js',
     // Skip API tests that use internal functions
     '!test/core/api.js',
     // Skip more attribute tests that depend on internal functions

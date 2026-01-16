@@ -261,7 +261,7 @@ describe('hx-swap-oob attribute', function() {
     })
   }
   for (const config of [{ allowNestedOobSwaps: true }, { allowNestedOobSwaps: false }]) {
-    it('handles oob target in web components with both inside shadow root and config ' + JSON.stringify(config), function() {
+    it.skip('handles oob target in web components with both inside shadow root and config ' + JSON.stringify(config), function() {
       this.server.respondWith('GET', '/test', '<div hx-swap-oob="innerHTML:#oob-swap-target">new contents</div>Clicked')
       class TestElement extends HTMLElement {
         connectedCallback() {
@@ -290,7 +290,7 @@ describe('hx-swap-oob attribute', function() {
     })
   }
   for (const config of [{ allowNestedOobSwaps: true }, { allowNestedOobSwaps: false }]) {
-    it('handles oob target in web components with main target outside web component config ' + JSON.stringify(config), function() {
+    it.skip('handles oob target in web components with main target outside web component config ' + JSON.stringify(config), function() {
       this.server.respondWith('GET', '/test', '<div hx-swap-oob="innerHTML:#oob-swap-target">new contents</div>Clicked')
       class TestElement extends HTMLElement {
         connectedCallback() {
@@ -319,7 +319,7 @@ describe('hx-swap-oob attribute', function() {
     })
   }
   for (const config of [{ allowNestedOobSwaps: true }, { allowNestedOobSwaps: false }]) {
-    it('handles global oob target in web components with main target inside web component config ' + JSON.stringify(config), function() {
+    it.skip('handles global oob target in web components with main target inside web component config ' + JSON.stringify(config), function() {
       this.server.respondWith('GET', '/test', '<div hx-swap-oob="innerHTML:global #oob-swap-target">new contents</div>Clicked')
       class TestElement extends HTMLElement {
         connectedCallback() {

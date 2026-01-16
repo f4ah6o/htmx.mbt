@@ -1418,15 +1418,100 @@ pub fn htmx_init() -> Unit {
 /// Initialize htmx.process API for processing dynamically added elements
 extern "js" fn init_htmx_process_api() -> Unit =
   #|() => {
-  #|  // Initialize window.htmx if it doesn't exist
-  #|  if (!window.htmx) {
-  #|    window.htmx = {};
-  #|  }
   #|  // htmx.process() - Process an element and its children for htmx attributes
+  #|  // This ALWAYS sets window.htmx.process, even if window.htmx already exists
   #|  window.htmx.process = function(element) {
   #|    if (!element) return;
+  #|
+  #|    // For ShadowRoot, attach event listeners directly to intercept form submissions
+  #|    // Events from shadow DOM may not properly propagate to document in some browsers
+  #|    if (element.nodeType === 11) {  // ShadowRoot (DOCUMENT_FRAGMENT_NODE)
+  #|      // Check if we've already attached listeners to this shadow root
+  #|      if (element._htmxProcessed) return;
+  #|      element._htmxProcessed = true;
+  #|
+  #|      element.addEventListener('click', function(evt) {
+  #|        const target = evt.target;
+  #|        if (!target || !target.tagName) return;
+  #|
+  #|        // Check if this is a submit button/input
+  #|        const tagName = target.tagName.toUpperCase();
+  #|        const typeAttr = target.getAttribute('type');
+  #|        const type = (typeAttr || target.type || '').toLowerCase();
+  #|        const isSubmitButton = tagName === 'BUTTON' && (type === 'submit' || !typeAttr);
+  #|        const isSubmitInput = tagName === 'INPUT' && type === 'submit';
+  #|
+  #|        if (isSubmitButton || isSubmitInput) {
+  #|          // Find the form this button submits to
+  #|          let form = target.form;
+  #|          if (!form) {
+  #|            const formId = target.getAttribute('form');
+  #|            if (formId) {
+  #|              form = element.querySelector('#' + CSS.escape(formId));
+  #|            }
+  #|          }
+  #|          if (!form) {
+  #|            form = target.closest('form');
+  #|          }
+  #|
+  #|          if (form) {
+  #|            // Check if form or button has htmx method attribute
+  #|            const methods = ['hx-post', 'hx-get', 'hx-put', 'hx-delete', 'hx-patch',
+  #|                            'data-hx-post', 'data-hx-get', 'data-hx-put', 'data-hx-delete', 'data-hx-patch'];
+  #|            let hasHtmx = false;
+  #|            for (const m of methods) {
+  #|              if (form.hasAttribute(m) || target.hasAttribute(m)) {
+  #|                hasHtmx = true;
+  #|                break;
+  #|              }
+  #|            }
+  #|
+  #|            if (hasHtmx) {
+  #|              evt.preventDefault();
+  #|              evt.stopPropagation();
+  #|              // Find which element has the htmx method
+  #|              let htmxEl = target;
+  #|              for (const m of methods) {
+  #|                if (target.hasAttribute(m)) break;
+  #|                if (form.hasAttribute(m)) {
+  #|                  htmxEl = form;
+  #|                  break;
+  #|                }
+  #|              }
+  #|              // Trigger htmx with a click event
+  #|              const clickEvt = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|              htmxEl.dispatchEvent(clickEvt);
+  #|            }
+  #|          }
+  #|        }
+  #|      }, true);  // Capture phase for clicks
+
+  #|      // Also intercept submit events directly (forms can be submitted without a click)
+  #|      element.addEventListener('submit', function(evt) {
+  #|        evt.preventDefault();
+  #|        evt.stopPropagation();
+  #|
+  #|        // Find the form in the event path
+  #|        const path = evt.composedPath();
+  #|        let form = null;
+  #|        for (let i = 0; i < path.length; i++) {
+  #|          const el = path[i];
+  #|          if (el && el.nodeType === 1 && el.tagName === 'FORM') {
+  #|            form = el;
+  #|            break;
+  #|          }
+  #|        }
+  #|
+  #|        if (form) {
+  #|          // Trigger htmx processing with a click event on the form
+  #|          const clickEvt = new MouseEvent('click', { bubbles: true, cancelable: true });
+  #|          form.dispatchEvent(clickEvt);
+  #|        }
+  #|      }, true);  // Capture phase for submit
+  #|    }
+  #|
   #|    // Process the element itself for load triggers
-  #|    const trigger = element.getAttribute('hx-trigger') || element.getAttribute('data-hx-trigger');
+  #|    const trigger = (element.getAttribute && element.getAttribute('hx-trigger')) || (element.getAttribute && element.getAttribute('data-hx-trigger')) || '';
   #|    if (trigger) {
   #|      const parts = trigger.split(',').map(s => s.trim());
   #|      for (const part of parts) {

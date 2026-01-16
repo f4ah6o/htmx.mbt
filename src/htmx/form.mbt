@@ -64,6 +64,15 @@ extern "js" fn collect_input_values_inner(
   #|    processElement(el);
   #|  }
   #|
+  #|  // NEW: Include elements with form attribute referencing this form
+  #|  const formId = form.getAttribute('id');
+  #|  if (formId) {
+  #|    const externalInputs = document.querySelectorAll(`input[form="${formId}"], select[form="${formId}"], textarea[form="${formId}"], button[form="${formId}"]`);
+  #|    for (const el of externalInputs) {
+  #|      processElement(el);
+  #|    }
+  #|  }
+  #|
   #|  console.log('[htmx.mbt FORM] collected result:', result);
   #|  // Return as MoonBit Array structure
   #|  return { buf: result, start: 0, end: result.length };

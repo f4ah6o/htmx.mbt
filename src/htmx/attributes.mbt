@@ -670,13 +670,14 @@ extern "js" fn split_by_semicolon(s : String) -> Array[String] =
 extern "js" fn get_trigger_event(elt : @dom.Element) -> String =
   #|(elt) => {
   #|  const trigger = elt.getAttribute('hx-trigger') || elt.getAttribute('data-hx-trigger');
+  #|  const defaultTrigger = (elt && elt.tagName === 'FORM') ? 'submit' : 'click';
   #|  if (trigger) {
   #|    // Parse modifiers (changed, once, delay, throttle, from, consume)
   #|    const parts = trigger.split(' ').filter(p => p.length > 0);
   #|    const eventPart = parts.find(p => !p.startsWith('changed.'));
-  #|    return eventPart || 'click';  // Default to click if not specified
+  #|    return eventPart || defaultTrigger;
   #|  }
-  #|  return 'click';  // Default to click for GET/POST/etc without trigger
+  #|  return defaultTrigger;
   #|}
 
 ///|
