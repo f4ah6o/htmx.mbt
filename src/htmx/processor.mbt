@@ -781,8 +781,45 @@ extern "js" fn get_event_target(evt : @core.Any) -> @dom.Element =
   #|    return target;
   #|  }
   #|
-  #|  // Last resort: return null or undefined
-  #|  return target;
+  #|  // Last resort: return document.body as a safe default
+  #|  return document.body;
+  #|}
+
+///|
+/// Find submit button in event path (for formnovalidate support)
+extern "js" fn find_submit_button_in_path(evt : @core.Any) -> @dom.Element? =
+  #|(evt) => {
+  #|  console.log('[htmx.mbt SUBMIT_BUTTON] find_submit_button_in_path called');
+  #|  if (evt && typeof evt.composedPath === 'function') {
+  #|    const path = evt.composedPath();
+  #|    console.log('[htmx.mbt SUBMIT_BUTTON] path:', path);
+  #|    if (path && path.length > 0) {
+  #|      for (let i = 0; i < path.length; i++) {
+  #|        const el = path[i];
+  #|        console.log('[htmx.mbt SUBMIT_BUTTON] path[' + i + ']:', el, 'nodeType:', el?.nodeType, 'tagName:', el?.tagName);
+  #|        if (el && el.nodeType === 1) {
+  #|          const tag = el.tagName;
+  #|          if (tag === 'BUTTON') {
+  #|            const type = (el.getAttribute('type') || el.type || '').toLowerCase();
+  #|            console.log('[htmx.mbt SUBMIT_BUTTON] Found BUTTON, type:', type);
+  #|            if (type === 'submit' || !el.getAttribute('type')) {
+  #|              console.log('[htmx.mbt SUBMIT_BUTTON] Returning submit button');
+  #|              return el;
+  #|            }
+  #|          } else if (tag === 'INPUT') {
+  #|            const type = (el.getAttribute('type') || el.type || '').toLowerCase();
+  #|            console.log('[htmx.mbt SUBMIT_BUTTON] Found INPUT, type:', type);
+  #|            if (type === 'submit') {
+  #|              console.log('[htmx.mbt SUBMIT_BUTTON] Returning submit input');
+  #|              return el;
+  #|            }
+  #|          }
+  #|        }
+  #|      }
+  #|    }
+  #|  }
+  #|  console.log('[htmx.mbt SUBMIT_BUTTON] No submit button found, returning null');
+  #|  return null;
   #|}
 
 ///|
@@ -1020,6 +1057,52 @@ extern "js" fn process_element_with_throttle(
 /// Handle click events for htmx elements
 fn handle_click(evt : @core.Any) -> Unit {
   let event : @event.Event = @core.identity(evt)
+
+  // First, check if clicking a submit button in event path (for formnovalidate support)
+  // This must be done before get_event_target which returns the htmx form, not the button
+  match find_submit_button_in_path(evt) {
+    Some(button) => {
+      // Check if button has containing form
+      if has_containing_form(button) {
+        let form = find_closest_form(button)
+        // Check if the button itself has an htmx method attribute
+        match find_method_url(button) {
+          Some(_) =>
+            // Button has its own htmx request - let it be processed normally
+            ()
+          None =>
+            // Button doesn't have htmx, check if form does
+            match find_method_url(form) {
+              Some(_) => {
+                // Form has htmx, submit with the button as submitter
+                event.preventDefault()
+                // Check for delay/throttle modifiers
+                let delay_ms = get_delay_from_trigger(form)
+                if delay_ms > 0 {
+                  process_element_with_delay(form, Some(button), Some(evt), delay_ms)
+                  return
+                }
+                let throttle_ms = get_throttle_from_trigger(form)
+                if throttle_ms > 0 {
+                  process_element_with_throttle(
+                    form,
+                    Some(button),
+                    Some(evt),
+                    throttle_ms,
+                  )
+                  return
+                }
+                process_element_with_trigger(form, Some(button), Some(evt))
+                return
+              }
+              None => ()
+            }
+        }
+      }
+    }
+    None => ()
+  }
+
   let target_el = get_event_target(evt)
   log_debug("handle_click: target_el=" + target_el.tagName())
 
@@ -1099,6 +1182,7 @@ fn handle_click(evt : @core.Any) -> Unit {
   }
 
   // Check if clicking a submit button inside an htmx form
+  // (This is a fallback for cases where the button itself is the target)
   if is_submit_button(target_el) {
     if has_containing_form(target_el) {
       let form = find_closest_form(target_el)
@@ -1486,6 +1570,10 @@ pub fn htmx_init() -> Unit {
 
   // Process revealed triggers
   process_revealed_triggers()
+
+  // Initialize SSE connections
+  let doc_target_any_sse : @core.Any = @core.identity(doc_target)
+  init_sse_connections(doc_target_any_sse)
 
   // Expose htmx.process API for test compatibility
   init_htmx_process_api()

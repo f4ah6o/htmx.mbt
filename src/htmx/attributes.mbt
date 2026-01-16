@@ -30,7 +30,7 @@ pub fn has_htmx_attribute(el : @dom.Element) -> Bool {
     "hx-encoding", "hx-confirm", "hx-prompt", "hx-disable", "hx-indicator", "hx-disabled-elt",
     "hx-push-url", "hx-select", "hx-select-oob", "hx-history-elt", "hx-boost", "hx-inherit",
     "hx-on", "hx-ext", "hx-validate", "hx-request", "hx-replace-url", "hx-disinherit",
-    "hx-preserve",
+    "hx-preserve", "hx-sse",
   ]
   let mut index = 0
   while index < attrs.length() {
