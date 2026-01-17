@@ -23,7 +23,6 @@ extern "js" fn split_sse_value(value : String) -> Array[String] =
 /// Syntax: "connect:<url> swap:<event1> swap:<event2>"
 pub fn parse_sse_attr(value : String) -> SseSpec {
   let parts = split_sse_value(value)
-
   let mut connect_url = Option::None
   let mut swap_events = Array::new()
 
@@ -38,13 +37,15 @@ pub fn parse_sse_attr(value : String) -> SseSpec {
     }
     index = index + 1
   }
-
-  { connect_url: connect_url, swap_events: swap_events }
+  { connect_url, swap_events }
 }
 
 ///|
 /// Append an event to the events array
-extern "js" fn append_event(events : Array[String], event : String) -> Array[String] =
+extern "js" fn append_event(
+  events : Array[String],
+  event : String,
+) -> Array[String] =
   #|(events, event) => {
   #|  const result = events.slice();
   #|  result.push(event);

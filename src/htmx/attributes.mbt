@@ -862,6 +862,101 @@ extern "js" fn get_prompt_message(elt : @dom.Element) -> String? =
   #|}
 
 ///|
+/// Fire htmx:confirm event and return whether request should proceed
+pub extern "js" fn fire_confirm_event(
+  element : @dom.Element,
+  question : String?,
+) -> Bool =
+  #|(element, question) => {
+  #|  // Track the final decision state
+  #|  let shouldProceed = false;
+  #|  let skipConfirm = false;
+  #|
+  #|  // Create issueRequest callback
+  #|  const issueRequest = function(skip) {
+  #|    if (skip === true) {
+  #|      // Explicitly skip window.confirm() and proceed
+  #|      skipConfirm = true;
+  #|      shouldProceed = true;
+  #|    } else {
+  #|      // Issue request but still may call window.confirm() if not prevented
+  #|      shouldProceed = true;
+  #|    }
+  #|  };
+  #|
+  #|  // Get question value (null if no hx-confirm attribute)
+  #|  const questionValue = (question && question.$tag === 1) ? question._0 : null;
+  #|
+  #|  // Create detail object
+  #|  const detail = {
+  #|    question: questionValue,
+  #|    issueRequest: issueRequest,
+  #|    target: element
+  #|  };
+  #|
+  #|  // Dispatch htmx:confirm event only ONCE (htmx uses kebab-case consistently)
+  #|  const evt = new CustomEvent('htmx:confirm', {
+  #|    bubbles: true,
+  #|    cancelable: true,
+  #|    detail: detail
+  #|  });
+  #|  element.dispatchEvent(evt);
+  #|
+  #|  // Determine if event was prevented
+  #|  const eventPrevented = evt.defaultPrevented;
+  #|
+  #|  // If not prevented and issueRequest was NOT called, proceed as normal
+  #|  if (!eventPrevented && !shouldProceed) {
+  #|    shouldProceed = true;
+  #|  }
+  #|
+  #|  // Store skipConfirm flag on element for later use
+  #|  if (skipConfirm) {
+  #|    element._htmxSkipConfirm = true;
+  #|  } else {
+  #|    element._htmxSkipConfirm = false;
+  #|  }
+  #|
+  #|  // Return true if we should proceed (not prevented, or issueRequest was called)
+  #|  return shouldProceed;
+  #|}
+
+///|
+/// Check if confirm should be skipped (because issueRequest(true) was called)
+pub extern "js" fn should_skip_confirm(elt : @dom.Element) -> Bool =
+  #|(elt) => {
+  #|  return !!(elt && elt._htmxSkipConfirm);
+  #|}
+
+///|
+/// Clear the skip confirm flag
+pub extern "js" fn clear_skip_confirm(elt : @dom.Element) -> Unit =
+  #|(elt) => {
+  #|  if (elt) {
+  #|    elt._htmxSkipConfirm = false;
+  #|  }
+  #|}
+
+///|
+/// Call window.confirm() with the given message
+pub extern "js" fn window_confirm(message : String) -> Bool =
+  #|(message) => {
+  #|  return window.confirm(message);
+  #|}
+
+///|
+/// Call window.confirm() with optional message (unwraps MoonBit Option type)
+pub extern "js" fn window_confirm_option(message_opt : String?) -> Bool =
+  #|(message_opt) => {
+  #|  // Unwrap MoonBit Option type: { $tag: 0 } is None, { $tag: 1, _0: value } is Some
+  #|  const message = (message_opt && message_opt.$tag === 1) ? message_opt._0 : null;
+  #|  if (message) {
+  #|    return window.confirm(message);
+  #|  }
+  #|  return true;  // No message, so proceed without confirmation
+  #|}
+
+///|
 /// Get validate attribute from element
 extern "js" fn get_validate_attribute(elt : @dom.Element) -> Bool =
   #|(elt) => {

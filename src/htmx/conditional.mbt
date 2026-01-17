@@ -17,7 +17,7 @@
 pub fn maybe_generate_conditional(
   elt : @core.Any,
   tokens : @core.Any,
-  param_name : String
+  param_name : String,
 ) -> @core.Any {
   maybe_generate_conditional_js(elt, tokens, param_name)
 }
@@ -28,7 +28,7 @@ pub fn maybe_generate_conditional(
 extern "js" fn maybe_generate_conditional_js(
   elt : @core.Any,
   tokens : @core.Any,
-  param_name : String
+  param_name : String,
 ) -> @core.Any =
   #|(elt, tokens, paramName) => {
   #|  if (!tokens || tokens.length === 0) {

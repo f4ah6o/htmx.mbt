@@ -131,6 +131,47 @@ fn process_element_with_trigger(
     return
   }
 
+  // Handle hx-confirm attribute - fire htmx:confirm event
+  let confirm_message = get_confirm_message(element)
+  let confirm_allowed = fire_confirm_event(element, confirm_message)
+  log_debug(
+    "confirm_allowed: " +
+    (match confirm_allowed {
+      true => "yes"
+      false => "no"
+    }),
+  )
+  if not(confirm_allowed) {
+    return
+  }
+
+  // Check if issueRequest(true) was called to skip window.confirm()
+  let skip_confirm = should_skip_confirm(element)
+  log_debug(
+    "skip_confirm: " +
+    (match skip_confirm {
+      true => "yes"
+      false => "no"
+    }),
+  )
+  // Clear the skip confirm flag for next time
+  clear_skip_confirm(element)
+
+  // If not skipping, call window.confirm() if there's a confirm message
+  if not(skip_confirm) {
+    let user_confirmed = window_confirm_option(confirm_message)
+    log_debug(
+      "user_confirmed: " +
+      (match user_confirmed {
+        true => "yes"
+        false => "no"
+      }),
+    )
+    if not(user_confirmed) {
+      return
+    }
+  }
+
   // Get target and swap style (with inheritance support)
   log_debug(
     "About to call get_target_with_inherit on element: " + element.tagName(),
@@ -1061,7 +1102,7 @@ fn handle_click(evt : @core.Any) -> Unit {
   // First, check if clicking a submit button in event path (for formnovalidate support)
   // This must be done before get_event_target which returns the htmx form, not the button
   match find_submit_button_in_path(evt) {
-    Some(button) => {
+    Some(button) =>
       // Check if button has containing form
       if has_containing_form(button) {
         let form = find_closest_form(button)
@@ -1079,7 +1120,12 @@ fn handle_click(evt : @core.Any) -> Unit {
                 // Check for delay/throttle modifiers
                 let delay_ms = get_delay_from_trigger(form)
                 if delay_ms > 0 {
-                  process_element_with_delay(form, Some(button), Some(evt), delay_ms)
+                  process_element_with_delay(
+                    form,
+                    Some(button),
+                    Some(evt),
+                    delay_ms,
+                  )
                   return
                 }
                 let throttle_ms = get_throttle_from_trigger(form)
@@ -1099,10 +1145,8 @@ fn handle_click(evt : @core.Any) -> Unit {
             }
         }
       }
-    }
     None => ()
   }
-
   let target_el = get_event_target(evt)
   log_debug("handle_click: target_el=" + target_el.tagName())
 
@@ -1131,7 +1175,10 @@ fn handle_click(evt : @core.Any) -> Unit {
                 let delay_ms = get_delay_from_trigger(form)
                 if delay_ms > 0 {
                   process_element_with_delay(
-                    form, Some(original_target), Some(evt), delay_ms,
+                    form,
+                    Some(original_target),
+                    Some(evt),
+                    delay_ms,
                   )
                   return
                 }
@@ -1139,12 +1186,19 @@ fn handle_click(evt : @core.Any) -> Unit {
                 let throttle_ms = get_throttle_from_trigger(form)
                 if throttle_ms > 0 {
                   process_element_with_throttle(
-                    form, Some(original_target), Some(evt), throttle_ms,
+                    form,
+                    Some(original_target),
+                    Some(evt),
+                    throttle_ms,
                   )
                   return
                 }
                 // Pass original_target (button) as trigger_el for formnovalidate
-                process_element_with_trigger(form, Some(original_target), Some(evt))
+                process_element_with_trigger(
+                  form,
+                  Some(original_target),
+                  Some(evt),
+                )
                 return
               }
               None => ()
@@ -1650,7 +1704,6 @@ extern "js" fn init_htmx_process_api() -> Unit =
   #|          }
   #|        }
   #|      }, true);  // Capture phase for clicks
-
   #|      // Also intercept submit events directly (forms can be submitted without a click)
   #|      element.addEventListener('submit', function(evt) {
   #|        evt.preventDefault();
@@ -1732,12 +1785,10 @@ extern "js" fn init_htmx_process_api() -> Unit =
   #|      }
   #|    }
   #|  };
-
   #|  // Initialize _internal object
   #|  if (!window.htmx._internal) {
   #|    window.htmx._internal = {};
   #|  }
-
   #|  // Expose cleanup function for test framework
   #|  window.htmx._internal.cleanupRevealedObservers = function() {
   #|    if (window.htmx._internal.intersectionObservers) {
