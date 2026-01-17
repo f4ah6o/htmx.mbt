@@ -12,6 +12,17 @@ extern "js" fn element_matches(el : @dom.Element, css : String) -> Bool =
   #|(el, css) => el.matches(css)
 
 ///|
+/// Normalize Hyperscript syntax by converting <tag/> to tag and <selector/> to selector
+extern "js" fn normalize_hyperscript_selector(selector : String) -> String =
+  #|(selector) => {
+  #|  // Replace <tag/> patterns with tag
+  #|  // e.g., "closest <div/>" -> "closest div", "find <span/>" -> "find span"
+  #|  // Also handle patterns like "<#d1/>" -> "#d1"
+  #|  // The regex matches <.../> where ... is any content except >, and strips both < and />
+  #|  return selector.replace(/<([^>]+)\/>/g, '$1');
+  #|}
+
+///|
 /// Get attribute with data-hx- prefix fallback
 pub fn get_attribute_with_prefix(elt : @dom.Element, attr : String) -> String? {
   let result = elt.getAttribute(attr)
@@ -165,29 +176,33 @@ fn parse_extended_target(
   element : @dom.Element,
   selector : String,
 ) -> @dom.Element? {
-  log_debug_attr("parse_extended_target: selector = '" + selector + "'")
-  if selector == "this" {
+  // Normalize Hyperscript syntax (e.g., "closest <div/>" -> "closest div")
+  let normalized = normalize_hyperscript_selector(selector)
+  log_debug_attr("parse_extended_target: selector = '" + normalized + "'")
+  if normalized == "this" {
     log_debug_attr("parse_extended_target: this -> returning element")
     Some(element)
-  } else if selector.has_prefix("global ") {
-    let css = substring_after(selector, 7)
+  } else if normalized.has_prefix("global ") {
+    let css = substring_after(normalized, 7)
     log_debug_attr("parse_extended_target: global '" + css + "'")
     @dom.document().querySelector(css)
-  } else if selector.has_prefix("closest ") {
-    let css = substring_after(selector, 8)
+  } else if normalized.has_prefix("closest ") {
+    let css = substring_after(normalized, 8)
     log_debug_attr("parse_extended_target: closest '" + css + "'")
     element.closest(css)
-  } else if selector.has_prefix("find ") {
-    let css = substring_after(selector, 5)
+  } else if normalized.has_prefix("find ") {
+    let css = substring_after(normalized, 5)
     log_debug_attr("parse_extended_target: find '" + css + "'")
     element.querySelector(css)
-  } else if selector.has_prefix("next") {
-    parse_next_target(element, selector)
+  } else if normalized.has_prefix("next") {
+    parse_next_target(element, normalized)
+  } else if normalized.has_prefix("previous") {
+    parse_previous_target(element, normalized)
   } else {
     log_debug_attr(
-      "parse_extended_target: default querySelector '" + selector + "'",
+      "parse_extended_target: default querySelector '" + normalized + "'",
     )
-    @dom.document().querySelector(selector)
+    @dom.document().querySelector(normalized)
   }
 }
 
@@ -213,33 +228,58 @@ fn parse_next_target(
 }
 
 ///|
+/// Parse 'previous' target syntax (e.g., "previous", "previous .sibling")
+fn parse_previous_target(
+  element : @dom.Element,
+  selector : String,
+) -> @dom.Element? {
+  log_debug_attr("parse_previous_target: selector = '" + selector + "'")
+  if selector == "previous" {
+    previous_element_sibling(element)
+  } else {
+    let css = substring_after(selector, 9) // "previous " is 9 chars
+    match previous_element_sibling(element) {
+      Some(prev) => if element_matches(prev, css) { Some(prev) } else { None }
+      None => None
+    }
+  }
+}
+
+///|
 /// Get targets by selector (handles extended syntax like "closest", "find", "next", "global")
 pub fn find_targets_by_selector(
   element : @dom.Element,
   selector : String,
 ) -> Array[@dom.Element] {
-  log_debug_attr("find_targets_by_selector: selector = '" + selector + "'")
-  if selector == "this" || selector == "window" {
+  // Normalize Hyperscript syntax (e.g., "closest <div/>" -> "closest div", "<#d1/>" -> "#d1")
+  let normalized = normalize_hyperscript_selector(selector)
+  log_debug_attr("find_targets_by_selector: selector = '" + normalized + "'")
+  if normalized == "this" || normalized == "window" {
     [element]
-  } else if selector.has_prefix("closest ") {
-    let css = substring_after(selector, 8)
+  } else if normalized.has_prefix("closest ") {
+    let css = substring_after(normalized, 8)
     match element.closest(css) {
       Some(el) => [el]
       None => []
     }
-  } else if selector.has_prefix("find ") {
-    let css = substring_after(selector, 5)
+  } else if normalized.has_prefix("find ") {
+    let css = substring_after(normalized, 5)
     element.querySelectorAll(css)
-  } else if selector.has_prefix("next") {
-    match parse_next_target(element, selector) {
+  } else if normalized.has_prefix("next") {
+    match parse_next_target(element, normalized) {
       Some(el) => [el]
       None => []
     }
-  } else if selector.has_prefix("global ") {
-    let css = substring_after(selector, 7)
+  } else if normalized.has_prefix("previous") {
+    match parse_previous_target(element, normalized) {
+      Some(el) => [el]
+      None => []
+    }
+  } else if normalized.has_prefix("global ") {
+    let css = substring_after(normalized, 7)
     @dom.document().querySelectorAll(css)
   } else {
-    @dom.document().querySelectorAll(selector)
+    @dom.document().querySelectorAll(normalized)
   }
 }
 
@@ -247,6 +287,11 @@ pub fn find_targets_by_selector(
 /// Get parent element
 extern "js" fn get_parent_element(el : @dom.Element) -> @dom.Element? =
   #|(el) => { const parent = el.parentElement; return parent ? { $tag: 1, _0: parent } : { $tag: 0 }; }
+
+///|
+/// Get previous element sibling
+extern "js" fn previous_element_sibling(el : @dom.Element) -> @dom.Element? =
+  #|(el) => { const prev = el.previousElementSibling; return prev ? { $tag: 1, _0: prev } : { $tag: 0 }; }
 
 ///|
 /// Get hx-inherit attribute value (checks both hx-inherit and data-hx-inherit)
