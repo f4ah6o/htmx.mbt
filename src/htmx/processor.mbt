@@ -867,22 +867,22 @@ extern "js" fn find_submit_button_in_path(evt : @core.Any) -> @dom.Element? =
   #|            console.log('[htmx.mbt SUBMIT_BUTTON] Found BUTTON, type:', type);
   #|            if (type === 'submit' || !el.getAttribute('type')) {
   #|              console.log('[htmx.mbt SUBMIT_BUTTON] Returning submit button');
-  #|              return el;
+  #|              return { $tag: 1, _0: el };
   #|            }
   #|          } else if (tag === 'INPUT') {
   #|            const type = (el.getAttribute('type') || el.type || '').toLowerCase();
   #|            console.log('[htmx.mbt SUBMIT_BUTTON] Found INPUT, type:', type);
   #|            if (type === 'submit') {
   #|              console.log('[htmx.mbt SUBMIT_BUTTON] Returning submit input');
-  #|              return el;
+  #|              return { $tag: 1, _0: el };
   #|            }
   #|          }
   #|        }
   #|      }
   #|    }
   #|  }
-  #|  console.log('[htmx.mbt SUBMIT_BUTTON] No submit button found, returning null');
-  #|  return null;
+  #|  console.log('[htmx.mbt SUBMIT_BUTTON] No submit button found, returning None');
+  #|  return { $tag: 0 };
   #|}
 
 ///|
