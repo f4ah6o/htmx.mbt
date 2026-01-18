@@ -114,7 +114,7 @@ const config = {
     '!test/attributes/hx-header.js',
     '!test/attributes/hx-include.js',
     '!test/attributes/hx-on.js',
-    '!test/attributes/hx-params.js',
+    // '!test/attributes/hx-params.js',  // ENABLED - hx-params implemented
     '!test/attributes/hx-request.js',
     // '!test/attributes/hx-sse.js',  // ENABLED for testing
     '!test/attributes/hx-validate.js',

@@ -338,3 +338,57 @@ extern "js" fn get_headers_from_element_inner(
   #|  }
   #|  return { buf: buf, start: 0, end: buf.length };
   #|}
+
+///|
+/// Get params filter from hx-params attribute
+/// Returns a filter specification: { mode: "none" | "all" | "include" | "exclude", names: string[] }
+pub fn get_params_filter(elt : @dom.Element?) -> @core.Any {
+  get_params_filter_inner(elt)
+}
+
+///|
+/// Internal function to get params filter via FFI
+extern "js" fn get_params_filter_inner(elt : @dom.Element?) -> @core.Any =
+  #|(elt) => {
+  #|  // Unwrap MoonBit Option type for elt
+  #|  const element = (elt && elt.$tag === 1) ? elt._0 : null;
+  #|
+  #|  // Helper to get attribute value (checks both hx-* and data-hx-*)
+  #|  const getAttributeValue = (el, attr) => {
+  #|    if (!el) return null;
+  #|    return el.getAttribute(attr) || el.getAttribute('data-' + attr);
+  #| };
+  #|
+  #|  // Get params filter from element (does not inherit like hx-headers)
+  #|  if (!element) {
+  #|    return { mode: 'all', names: [] };
+  #|  }
+  #|
+  #|  const paramsValue = getAttributeValue(element, 'hx-params');
+  #|  if (!paramsValue) {
+  #|    return { mode: 'all', names: [] };
+  #|  }
+  #|
+  #|  const trimmed = paramsValue.trim();
+  #|
+  #|  // Handle 'none' - exclude all parameters
+  #|  if (trimmed === 'none') {
+  #|    return { mode: 'none', names: [] };
+  #|  }
+  #|
+  #|  // Handle '*' - include all parameters (default)
+  #|  if (trimmed === '*') {
+  #|    return { mode: 'all', names: [] };
+  #|  }
+  #|
+  #|  // Handle 'not' prefix for exclude mode
+  #|  if (trimmed.startsWith('not ')) {
+  #|    const namesStr = trimmed.slice(4).trim();
+  #|    const names = namesStr ? namesStr.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+  #|    return { mode: 'exclude', names: names };
+  #|  }
+  #|
+  #|  // Handle comma-separated list for include mode
+  #|  const names = trimmed ? trimmed.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+  #|  return { mode: 'include', names: names };
+  #|}

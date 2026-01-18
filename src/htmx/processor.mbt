@@ -38,6 +38,62 @@ extern "js" fn values_to_js_object(
   #|}
 
 ///|
+/// Apply params filter to input values
+/// Takes an array of (name, value) pairs and a filter specification
+/// Returns filtered array of (name, value) pairs
+extern "js" fn apply_params_filter(
+  values : Array[(String, String)],
+  filter : @core.Any,
+) -> Array[(String, String)] =
+  #|(values, filter) => {
+  #|  // Handle both MoonBit Array structure and plain JavaScript array
+  #|  const entries = [];
+  #|  if (values && values.buf) {
+  #|    // MoonBit Array structure
+  #|    for (let i = values.start || 0; i < (values.end || values.buf.length); i++) {
+  #|      const entry = values.buf[i];
+  #|      if (entry) {
+  #|        const key = entry._0 !== undefined ? entry._0 : (entry[0] !== undefined ? entry[0] : null);
+  #|        const val = entry._1 !== undefined ? entry._1 : (entry[1] !== undefined ? entry[1] : null);
+  #|        if (key !== null) {
+  #|          entries.push([key, val]);
+  #|        }
+  #|      }
+  #|    }
+  #|  } else if (Array.isArray(values)) {
+  #|    // Plain JavaScript array
+  #|    for (const entry of values) {
+  #|      if (entry && entry.length >= 2) {
+  #|        entries.push([entry[0], entry[1]]);
+  #|      }
+  #|    }
+  #|  }
+  #|
+  #|  // Get filter mode and names
+  #|  const mode = filter && filter.mode ? filter.mode : 'all';
+  #|  const names = filter && filter.names ? filter.names : [];
+  #|
+  #|  // Filter based on mode
+  #|  let filtered;
+  #|  if (mode === 'none') {
+  #|    filtered = [];
+  #|  } else if (mode === 'all') {
+  #|    filtered = entries;
+  #|  } else if (mode === 'include') {
+  #|    // Only include parameters in the names list
+  #|    filtered = entries.filter(entry => names.indexOf(entry[0]) !== -1);
+  #|  } else if (mode === 'exclude') {
+  #|    // Exclude parameters in the names list
+  #|    filtered = entries.filter(entry => names.indexOf(entry[0]) === -1);
+  #|  } else {
+  #|    filtered = entries;
+  #|  }
+  #|
+  #|  // Convert to MoonBit Array format
+  #|  return { buf: filtered, start: 0, end: filtered.length };
+  #|}
+
+///|
 /// Merge source object into target object
 extern "js" fn merge_objects(target : @core.Any, source : @core.Any) -> Unit =
   #|(target, source) => {
@@ -253,7 +309,10 @@ fn process_element_with_trigger(
   // Fire htmx:config-request event to allow modification of parameters
   // Collect input values for the event
   let input_values = collect_input_values(element)
-  let parameters = values_to_js_object(input_values)
+  // Apply hx-params filter
+  let params_filter = get_params_filter(Some(element))
+  let filtered_values = apply_params_filter(input_values, params_filter)
+  let parameters = values_to_js_object(filtered_values)
   // Add hx-vars to parameters
   let vars_any = map_to_any(expression_vars)
   merge_objects(parameters, vars_any)
