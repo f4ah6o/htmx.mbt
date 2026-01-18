@@ -101,7 +101,7 @@ const config = {
     // '!test/attributes/hx-put.js',  // enabled - passing
     // '!test/attributes/hx-select.js',  // enabled - passing
     // '!test/attributes/hx-swap-oob.js',  // enabled - passing
-    '!test/attributes/hx-target.js',  // TODO: timing out - implementation correct but test runner has issues with this file
+    '!test/attributes/hx-target.js',  // IMPLEMENTED: previous support added - test runner has browser timeout issues with this file
     '!test/core/sse.js',  // SSE not implemented
     '!test/core/ws.js',  // WebSocket not implemented
     // More attribute tests that depend on unimplemented features

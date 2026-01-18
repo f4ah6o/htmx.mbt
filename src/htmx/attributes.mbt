@@ -426,8 +426,6 @@ fn find_inherited_attribute_with_check(
 
 ///|
 /// Get target element with inheritance support
-/// When a target selector is explicitly specified but invalid, returns the source element
-/// marked with a special attribute to indicate no swap should occur
 pub fn get_target_with_inherit(element : @dom.Element) -> @dom.Element {
   let target_attr = hx_target()
   let result = match element.getAttribute(target_attr) {
@@ -438,11 +436,7 @@ pub fn get_target_with_inherit(element : @dom.Element) -> @dom.Element {
     Some(selector) =>
       match parse_extended_target(element, selector) {
         Some(target) => target
-        None => {
-          // Invalid target selector - mark element to prevent swap
-          mark_invalid_target(element)
-          element
-        }
+        None => element
       }
     None =>
       // Try to inherit hx-target from parent
@@ -458,39 +452,13 @@ pub fn get_target_with_inherit(element : @dom.Element) -> @dom.Element {
           } else {
             match parse_extended_target(element, inherited_selector) {
               Some(target) => target
-              None => {
-                // Invalid inherited target selector - mark element to prevent swap
-                mark_invalid_target(element)
-                element
-              }
+              None => element
             }
           }
         None => element
       }
   }
 }
-
-///|
-/// Mark an element as having an invalid target (to prevent swap)
-extern "js" fn mark_invalid_target(element : @dom.Element) -> Unit =
-  #|(element) => {
-  #|  element.setAttribute('data-hx-invalid-target', 'true');
-  #|}
-
-///|
-/// Check if target element is valid (swap should proceed)
-extern "js" fn is_target_valid(target : @dom.Element) -> Bool =
-  #|(target) => {
-  #|  // A target is invalid if it has the special marker attribute
-  #|  return !target.hasAttribute('data-hx-invalid-target');
-  #|}
-
-///|
-/// Clear the invalid target marker from an element
-extern "js" fn clear_invalid_target_marker(element : @dom.Element) -> Unit =
-  #|(element) => {
-  #|  element.removeAttribute('data-hx-invalid-target');
-  #|}
 
 ///|
 /// Find the first parent element (including the element itself) that has the given attribute

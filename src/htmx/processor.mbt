@@ -470,13 +470,6 @@ extern "js" fn create_response_callback(
   #|
   #|    // Swap content if we got a response
   #|    if (responseText !== null) {
-  #|      // Check if target was marked as invalid (e.g., bad selector in hx-target)
-  #|      // In this case, don't perform the swap
-  #|      if (target.hasAttribute('data-hx-invalid-target')) {
-  #|        console.log('[htmx.mbt SWAP] Target marked as invalid, skipping swap');
-  #|        target.removeAttribute('data-hx-invalid-target');
-  #|        return;
-  #|      }
   #|      const htmx = window.htmx || {};
   #|      const config = htmx.config || {};
   #|      const selectVal = element.getAttribute("hx-select") || element.getAttribute("data-hx-select");
